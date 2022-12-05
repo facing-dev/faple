@@ -1,0 +1,1 @@
+export default <div id="xx" f={123}>xx{'ff'}</div>

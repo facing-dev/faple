@@ -1,0 +1,35 @@
+{
+    "compilerOptions": {
+      "target": "ES6",
+      "lib": [
+        "ES6",
+        "dom",
+        "dom.iterable",
+        "ES2016.Array.Include"
+      ],
+      "allowJs": true,
+      "skipLibCheck": true,
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true,
+      "strict": true,
+      "forceConsistentCasingInFileNames": true,
+      "noFallthroughCasesInSwitch": true,
+      "module": "esnext",
+      "moduleResolution": "node",
+      "resolveJsonModule": true,
+      "isolatedModules": true,
+      "noEmit": false,
+      "jsx": "preserve",
+      "baseUrl": ".",
+      "outDir": "tsc",
+      "declaration": true,
+      "experimentalDecorators": true,
+      "downlevelIteration": true,
+    },
+    "include": [
+      "./src/**/*.ts",
+      "./src/**/*.tsx",
+      "./src/**/*.d.ts"
+    ]
+
+  }
