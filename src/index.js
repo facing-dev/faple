@@ -1,10 +1,5 @@
-import x from './test.jsx'
 
-console.log(x)
-
-function component() {
-    const element = document.createElement('div');
-    return element;
-}
-
-document.body.appendChild(component());
+import Test from './test'
+import MVVM from './mvvm'
+const mvvm = new MVVM(document.body)
+mvvm.mount(Test)
