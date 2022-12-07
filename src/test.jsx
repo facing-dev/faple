@@ -1,4 +1,4 @@
-import { Component } from './mvvm'
+import { Component } from './faple'
 
 export default class Test extends Component {
     num = 1
