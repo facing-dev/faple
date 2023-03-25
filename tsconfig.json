@@ -15,21 +15,17 @@
       "forceConsistentCasingInFileNames": true,
       "noFallthroughCasesInSwitch": true,
       "module": "esnext",
-      "moduleResolution": "node",
-      "resolveJsonModule": true,
       "isolatedModules": true,
       "noEmit": false,
-      "jsx": "preserve",
       "baseUrl": ".",
-      "outDir": "tsc",
+      "outDir": "dist",
       "declaration": true,
-      "experimentalDecorators": true,
-      "downlevelIteration": true,
+      "moduleResolution": "node",
+      "sourceMap": true,
+      "paths": {
+        "@facing/faple-h/*": ["src/h"]
+      }
     },
-    "include": [
-      "./src/**/*.ts",
-      "./src/**/*.tsx",
-      "./src/**/*.d.ts"
-    ]
+    "files": ["./src/index.ts","./src/vdom/jsx-runtime.ts"]
 
   }

@@ -1,11 +1,23 @@
-import { v4 as uuidV4 } from 'uuid'
-import type { VNodeEl, VNode } from './h/jsx-runtime'
-function couldReuseEl(oldVNode: VNode, newVNode: VNode) {
+import recursiveFree from 'recursive-free'
+
+import { VNode, VNodeInstanceReference } from './vdom/vnode'
+import { Component, ComponentConstructor } from './component/component'
+import Logger from './logger'
+import { Scheduler } from './scheduler'
+function isFakeVNodeInstanceReference(vnode: VNodeInstanceReference) {
+    if (!vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
+        Logger.error('previousVNodeInstanceReference is undefined')
+        throw ''
+    }
+    return vnode.vNodeInstanceRoot.previousVNodeInstanceReference !== vnode
+}
+
+function couldReuse(oldVNode: VNode, newVNode: VNode) {
 
     if (oldVNode.type !== newVNode.type) {
         return false
     }
-    if (oldVNode.type === 'VNodeEl' && newVNode.type === 'VNodeEl') {
+    if (oldVNode.type === 'ELEMENT' && newVNode.type === 'ELEMENT') {
         if (oldVNode.tag !== newVNode.tag) {
             return false
         }
@@ -13,176 +25,240 @@ function couldReuseEl(oldVNode: VNode, newVNode: VNode) {
             return false
         }
     }
+    if (oldVNode.type === 'INSTANCE_REFERENCE' && newVNode.type === 'INSTANCE_REFERENCE') {
+        if (oldVNode.vNodeInstanceRoot !== newVNode.vNodeInstanceRoot) {
+            return false
+        }
+    }
+    if (oldVNode.type === 'INSTANCE_ROOT' && newVNode.type === 'INSTANCE_ROOT') {
+        if (oldVNode.instance !== newVNode.instance) {
+            Logger.error('INSTANCE_ROOT vnode must have same instance in couldReuse()')
+            throw ''
+        }
+    }
     return true
 }
-function initDom(vnode: VNode) {
-    if (vnode.type === 'VNodeText') {
+
+const initDom = recursiveFree<VNode, HTMLElement | Text>(function* (vnode) {
+    if (vnode.type === 'TEXT') {
         const node = document.createTextNode(vnode.text)
         vnode.node = node
         return node
     }
-    const el = document.createElement(vnode.tag)
-    for (const key in vnode.attrs) {
-        const attr = vnode.attrs[key]
-        el.setAttribute(key, attr)
+    if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
+        const el = document.createElement(vnode.tag)
+        if (vnode.attributes) {
+            for (const key in vnode.attributes) {
+                const attr = vnode.attributes[key]
+                el.setAttribute(key, attr)
+            }
+        }
+        if (vnode.listeners) {
+
+            for (const key in vnode.listeners) {
+                const event = vnode.listeners[key]
+                el.addEventListener(key, event as any)
+            }
+        }
+        if (typeof vnode.classes === 'string') {
+            el.className = vnode.classes
+        }
+        if (typeof vnode.styles === 'string') {
+            el.setAttribute('style', vnode.styles)
+        }
+        if (vnode.children) {
+            for (const key in vnode.children) {
+                const child = vnode.children[key]
+                const childEl = yield (child)
+                el.appendChild(childEl)
+            }
+        }
+        vnode.node = el
+        return el
     }
-    for (const key in vnode.listeners) {
-        const event = vnode.listeners[key]
-        el.addEventListener(key, event as any)
+    if (vnode.type === 'INSTANCE_REFERENCE') {
+        if (!vnode.vNodeInstanceRoot.node) {
+            Logger.error('Referenced instance not inited')
+            throw ''
+        }
+        vnode.vNodeInstanceRoot.previousVNodeInstanceReference = vnode
+        return vnode.vNodeInstanceRoot.node
     }
-    for (const key in vnode.children) {
-        const child = vnode.children[key]
-        const childEl = initDom(child)
-        el.appendChild(childEl)
+    Logger.error('VNode not supported', vnode)
+    throw ''
+})
+function removeDom(vNode: VNode) {
+
+    if (vNode.type === 'INSTANCE_ROOT') {
+        Logger.error('Can not remove an instance root\'s dom')
+        throw ''
+    } else if (vNode.type === 'INSTANCE_REFERENCE') {
+        if (isFakeVNodeInstanceReference(vNode)) {
+            return
+        }
+        vNode.vNodeInstanceRoot.node!.remove()
+    } else {
+        vNode.node!.remove()
     }
-    vnode.node = el
-    return el
 }
 
-function updateDom(oldVNode: VNode, newVNode: VNode) {
-    if (!couldReuseEl(oldVNode, newVNode)) {
-        throw '5'
+const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
+    const [oldVNode, newVNode] = args
+    if (!couldReuse(oldVNode, newVNode)) {
+        return
     }
-    if (oldVNode.type === 'VNodeEl' && newVNode.type === 'VNodeEl') {
+
+    if ((oldVNode.type === 'ELEMENT' && newVNode.type === 'ELEMENT') ||
+        (oldVNode.type === 'INSTANCE_ROOT' && newVNode.type === 'INSTANCE_ROOT')) {
+        const node = newVNode.node = oldVNode.node!
         {
+
             //attr
-            for (const key in newVNode.attrs) {
-                if (key in oldVNode.attrs) {
-                    if (newVNode.attrs[key] !== oldVNode.attrs[key]) {
-                        oldVNode.node!.setAttribute(key, newVNode.attrs[key])
+            if (newVNode.attributes) {
+                for (const key in newVNode.attributes) {
+                    if (oldVNode.attributes && (key in oldVNode.attributes)) {
+                        if (newVNode.attributes[key] !== oldVNode.attributes[key]) {
+                            node.setAttribute(key, newVNode.attributes[key])
+                        } else {
+                            continue
+                        }
                     } else {
-                        continue
+                        node.setAttribute(key, newVNode.attributes[key])
                     }
-                } else {
-                    oldVNode.node!.setAttribute(key, newVNode.attrs[key])
                 }
             }
-            for (const key in oldVNode.attrs) {
-                if (!(key in newVNode.attrs)) {
-                    oldVNode.node!.removeAttribute(key)
+            if (oldVNode.attributes) {
+                for (const key in oldVNode.attributes) {
+                    if (!newVNode.attributes || !(key in newVNode.attributes)) {
+                        node.removeAttribute(key)
+                    }
                 }
             }
+
         }
 
         {
             //listener
-            for (const key in newVNode.listeners) {
-                if (key in oldVNode.listeners) {
-                    if (newVNode.listeners[key] !== oldVNode.listeners[key]) {
-                        oldVNode.node!.removeEventListener(key, oldVNode.listeners[key] as any)
-                        oldVNode.node!.addEventListener(key, newVNode.listeners[key] as any)
+            if (newVNode.listeners) {
+                for (const key in newVNode.listeners) {
+                    if (oldVNode.listeners && (key in oldVNode.listeners)) {
+                        if (newVNode.listeners[key] !== oldVNode.listeners[key]) {
+                            node.removeEventListener(key, oldVNode.listeners[key] as any)
+                            node.addEventListener(key, newVNode.listeners[key] as any)
+                        } else {
+                            continue
+                        }
                     } else {
-                        continue
+                        oldVNode.node!.addEventListener(key, newVNode.listeners[key] as any)
                     }
-                } else {
-                    oldVNode.node!.addEventListener(key, newVNode.listeners[key] as any)
                 }
             }
-            for (const key in oldVNode.listeners) {
-                if (!(key in newVNode.listeners)) {
-                    oldVNode.node!.removeEventListener(key, oldVNode.listeners[key] as any)
+            if (oldVNode.listeners) {
+                for (const key in oldVNode.listeners) {
+                    if (!newVNode.listeners || !(key in newVNode.listeners)) {
+                        node!.removeEventListener(key, oldVNode.listeners[key] as any)
+                    }
                 }
+            }
+        }
+        //classes
+        {
+            if (newVNode.classes !== oldVNode.classes) {
+                node.className = newVNode.classes ?? ''
+            }
+        }
+        //styles
+        {
+            if (newVNode.styles !== oldVNode.styles) {
+                node.setAttribute('style', newVNode.styles ?? '')
             }
         }
 
         {
             //children
             let newInd = -1
-            for (const oldInd in oldVNode.children) {
-                newInd = Number(oldInd)
-                if (newInd >= newVNode.children.length) {
-                    oldVNode.children[oldInd].node!.remove()
-                    continue
-                }
-                if (couldReuseEl(oldVNode.children[oldInd], newVNode.children[newInd])) {
-                    updateDom(oldVNode.children[oldInd], newVNode.children[newInd])
-                } else {
-                    const node = initDom(newVNode.children[newInd])
-                    oldVNode.node!.replaceChild(node, oldVNode.children[oldInd].node!)
+            if (oldVNode.children) {
+                for (const oldInd in oldVNode.children) {
+                    const oldChild = oldVNode.children[oldInd]
+                    if (oldChild.type === 'INSTANCE_REFERENCE' && isFakeVNodeInstanceReference(oldChild)) {
+                        continue
+                    }
+                    newInd += 1
+                    if (!newVNode.children || newInd >= newVNode.children.length) {
+                        removeDom(oldChild)
+                        continue
+                    }
+                    const newChild = newVNode.children[newInd]
+                    if (couldReuse(oldChild, newChild)) {
+                        yield [oldChild, newChild]
+
+                    } else {
+                        const newNode = initDom(newChild)
+                        node.replaceChild(newNode, oldChild.type === 'INSTANCE_REFERENCE' ? oldChild.vNodeInstanceRoot.node! : oldChild.node!)
+                    }
                 }
             }
-            for (newInd++; newInd < newVNode.children.length; newInd++) {
-                const node = initDom(newVNode.children[newInd])
-                oldVNode.node!.appendChild(node)
+            if (newVNode.children) {
+                for (newInd++; newInd < newVNode.children.length; newInd++) {
+                    const newNode = initDom(newVNode.children[newInd])
+                    node.appendChild(newNode)
+                }
             }
+
         }
-        newVNode.node = oldVNode.node
+
         return
-    } else if (oldVNode.type === 'VNodeText' && newVNode.type === 'VNodeText') {
+    } else if (oldVNode.type === 'TEXT' && newVNode.type === 'TEXT') {
+        newVNode.node = oldVNode.node
         if (oldVNode.text !== newVNode.text) {
             oldVNode.node!.textContent = newVNode.text
         }
-        newVNode.node = oldVNode.node
+
+        return
+    }
+    else if (oldVNode.type === 'INSTANCE_REFERENCE' && newVNode.type === 'INSTANCE_REFERENCE') {
         return
     }
     throw '6'
-}
-export default class MVVM {
-    constructor(public root: HTMLElement) {
-    }
-    private components: Record<string, {
-        component: Component,
-        vNode: VNodeEl,
+})
 
-    }> = {}
-    private initComponent(component: ComponentConstructor) {
+// function updateDom(oldVNode: VNode, newVNode: VNode) {
+
+// }
+export class Faple {
+    constructor(public root: HTMLElement) {
+        this.scheduler = new Scheduler(this)
+    }
+    scheduler: Scheduler
+    initComponent<COMP extends Component>(component: { new(): COMP }): COMP {
         const comp = new component()
-        comp._setMVVM(this)
-        const vNode = comp.render()
-        const el = initDom(vNode)
- 
+        comp.__slot.faple = this
+        comp.__slot.h()
+        const el = initDom(comp.__slot.vNode!)
         if (!(el instanceof HTMLElement)) {
             throw '1'
         }
-        this.components[comp._id] = {
-            component: comp,
-            vNode
-        }
-        comp.mounted()
-        return this.components[comp._id]
+        this.scheduler.scheduleMounted(comp)
+        return comp
     }
-    update(component: Component) {
-        const record = this.components[component._id]
-        if (!record) {
-            throw '2'
+    updateComponent(comp: Component) {
+        console.log('rrr')
+        const slot = comp.__slot
+        slot.h()
+        if (!slot.vNodeOld) {
+            throw 'vNodeOld is undefined'
         }
-        console.log('update', record)
-        const newVNode = record.component.render()
-        const oldVNode = record.vNode
-
-        updateDom(oldVNode, newVNode)
-
-        record.vNode = newVNode
+        updateDom([slot.vNodeOld, slot.vNode!])
     }
     mount(component: ComponentConstructor) {
-        const record = this.initComponent(component)
-        if (!record.vNode.node) {
+        const comp = this.initComponent(component)
+        const node = comp.__slot.vNode?.node
+
+        if (!node) {
             throw '3'
         }
-        this.root.append(record.vNode.node)
+        this.root.append(node)
     }
 }
 
-export abstract class Component {
-    _id: string
-    _mvvm: MVVM | null = null
-    constructor() {
-        this._id = uuidV4()
-    }
-    abstract render(): VNodeEl
-    _setMVVM(mvvm: MVVM) {
-        this._mvvm = mvvm
 
-    }
-    _update() {
-        if (!this._mvvm) {
-            throw '4'
-        }
-        this._mvvm.update(this)
-    }
-    mounted(){
-
-    }
-}
-
-type ComponentConstructor = { new(): Component }

@@ -1,5 +1,3 @@
-
-import Test from './test'
-import Faple from './faple'
-const mvvm = new Faple(document.body)
-mvvm.mount(Test)
+export {Faple} from './faple'
+export {Component} from './component/component'
+export {Comp} from './decorator/component'
