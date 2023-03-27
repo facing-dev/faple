@@ -1,5 +1,4 @@
 import recursiveFree from 'recursive-free'
-
 import { VNode, VNodeInstanceReference } from './vdom/vnode'
 import { Component, ComponentConstructor } from './component/component'
 import Logger from './logger'
@@ -232,23 +231,29 @@ export class Faple {
     scheduler: Scheduler
     initComponent<COMP extends Component>(component: { new(): COMP }): COMP {
         const comp = new component()
+
         comp.__slot.faple = this
-        comp.__slot.h()
+        comp.__slot.beforeMount()
+
+        comp.__slot.hEffect.effect.run()
         const el = initDom(comp.__slot.vNode!)
         if (!(el instanceof HTMLElement)) {
             throw '1'
         }
+        comp.__slot.mounted = true
         this.scheduler.scheduleMounted(comp)
         return comp
     }
     updateComponent(comp: Component) {
-        console.log('rrr')
         const slot = comp.__slot
-        slot.h()
+        slot.hEffect.effect.run()
         if (!slot.vNodeOld) {
             throw 'vNodeOld is undefined'
         }
         updateDom([slot.vNodeOld, slot.vNode!])
+    }
+    releaseComponent(comp: Component) {
+        comp.__slot.destroyed()
     }
     mount(component: ComponentConstructor) {
         const comp = this.initComponent(component)

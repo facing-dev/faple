@@ -18,6 +18,7 @@
     "@facing/scheduler": "^0.2.15",
     "@types/lodash": "^4.14.191",
     "@types/uuid": "^9.0.1",
+    "@vue/reactivity": "^3.2.47",
     "lodash": "^4.17.21",
     "recursive-free": "^1.0.3",
     "uuid": "^9.0.0"

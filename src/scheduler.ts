@@ -1,4 +1,5 @@
-import { Scheduler as SchedulerBase, Record } from '@facing/scheduler'
+import { Scheduler as SchedulerBase } from '@facing/scheduler'
+// const LayerName_BeforeMount = 'LayerName_BeforeMount'
 const LayerName_Mounted = 'LayerName_Mounted'
 const LayerName_Render = 'LayerName_Render'
 const LayerName_NextTick = 'LayerName_NextTick'
@@ -11,11 +12,15 @@ export class Scheduler extends SchedulerBase {
     constructor(faple: Faple) {
         super()
         this.faple = faple
+        // this.createLayer(LayerName_BeforeMount)
         this.createLayer(LayerName_Mounted)
         this.createLayer(LayerName_Render)
         this.createLayer(LayerName_NextTick)
 
     }
+    // private getLayerBeforeMount(){
+    //     return this.getLayer(LayerName_BeforeMount)!
+    // }
     private getLayerMounted() {
         return this.getLayer(LayerName_Mounted)!
     }
@@ -26,15 +31,17 @@ export class Scheduler extends SchedulerBase {
         return this.getLayer(LayerName_NextTick)!
     }
 
+    // scheduleBeforeMount(cb:Function){
+    //     this.getLayerBeforeMount().records.add(cb,null)
+    //     this.schedule()
+
+    // }
     scheduleMounted(comp: Component) {
         this.getLayerMounted().records.add(comp.mounted.bind(comp), null)
-        // console.log('z', this.getLayerMounted())
         this.schedule()
     }
-    scheduleRender(comp: Component) {
-        this.getLayerRender().records.add(() => {
-            this.faple.updateComponent(comp)
-        }, null, comp)
+    scheduleRender(cb:Function,comp: Component) {
+        this.getLayerRender().records.add(cb, null, comp)
         this.schedule()
     }
     scheduleNextTick(comp: Component, cb: Function) {
