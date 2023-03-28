@@ -3,9 +3,12 @@ import type { VNodeInstanceRoot } from '../vdom/vnode'
 export class PrototypeSlot {
     renderer?: () => VNodeInstanceRoot
     reactiveKeys?: Set<string>
+    watchKeys?: Set<string>
+    bindKeys?: Set<string>
 }
 
 export function initPrototypeSlot(proto: Component) {
+
     const desc = Object.getOwnPropertyDescriptor(proto, '__prototypeSlot_')
     if (desc) {
         return desc.value as PrototypeSlot

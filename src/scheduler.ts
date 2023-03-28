@@ -37,7 +37,10 @@ export class Scheduler extends SchedulerBase {
 
     // }
     scheduleMounted(comp: Component) {
-        this.getLayerMounted().records.add(comp.mounted.bind(comp), null)
+        this.getLayerMounted().records.add(()=>{
+            comp.mounted()
+            comp.__slot.afterMounted()
+        }, null)
         this.schedule()
     }
     scheduleRender(cb:Function,comp: Component) {

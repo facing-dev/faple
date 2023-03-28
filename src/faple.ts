@@ -3,6 +3,7 @@ import { VNode, VNodeInstanceReference } from './vdom/vnode'
 import { Component, ComponentConstructor } from './component/component'
 import Logger from './logger'
 import { Scheduler } from './scheduler'
+import * as Hydrate from './vdom/hydrate'
 function isFakeVNodeInstanceReference(vnode: VNodeInstanceReference) {
     if (!vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
         Logger.error('previousVNodeInstanceReference is undefined')
@@ -38,14 +39,51 @@ function couldReuse(oldVNode: VNode, newVNode: VNode) {
     return true
 }
 
-const initDom = recursiveFree<VNode, HTMLElement | Text>(function* (vnode) {
+const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | false }, HTMLElement | Text>(function* (opt) {
+    const vnode = opt.vnode
+    const hydrate = opt.hydrate
+    let mis = false
     if (vnode.type === 'TEXT') {
-        const node = document.createTextNode(vnode.text)
+        let node: Text | null = null
+
+        if (hydrate === false) {
+            node = document.createTextNode(vnode.text)
+        }
+        else {
+            if (Hydrate.isTextNode(hydrate)) {
+                node = hydrate
+                node.nodeValue = vnode.text
+            }
+            else {
+                mis = true
+                node = document.createTextNode(vnode.text)
+            }
+        }
+        if (mis) {
+            Logger.warn('Hydrate mismatched', vnode, hydrate, node)
+        }
         vnode.node = node
         return node
     }
     if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
-        const el = document.createElement(vnode.tag)
+        let el: HTMLElement | null = null
+        if (hydrate === false || Hydrate.isTextNode(hydrate)) {
+            if (hydrate !== false) {
+                mis = true
+            }
+            el = document.createElement(vnode.tag)
+
+        } else {
+            if (hydrate.tagName.toLowerCase() === vnode.tag.toLowerCase()) {
+                el = hydrate
+            } else {
+                mis = true
+                el = document.createElement(vnode.tag)
+            }
+        }
+        if (mis) {
+            Logger.warn('Hydrate mismatched', vnode, hydrate, el)
+        }
         if (vnode.attributes) {
             for (const key in vnode.attributes) {
                 const attr = vnode.attributes[key]
@@ -66,10 +104,31 @@ const initDom = recursiveFree<VNode, HTMLElement | Text>(function* (vnode) {
             el.setAttribute('style', vnode.styles)
         }
         if (vnode.children) {
+            let hydrateNodes: ReturnType<typeof Hydrate.getValideChildren> | null = null
+            // let mismatched = false
             for (const key in vnode.children) {
+                let hydrateOpt: typeof hydrate = false
+                if (hydrate ) {
+                    if (mis) {
+                        hydrateOpt = false
+                    } else {
+                        hydrateNodes ??= Hydrate.getValideChildren(el)
+                        hydrateOpt = hydrateNodes[key] ?? false
+                    }
+                }
                 const child = vnode.children[key]
-                const childEl = yield (child)
-                el.appendChild(childEl)
+                const childEl = yield { vnode: child, hydrate: hydrateOpt }
+                if (hydrate && mis === false && childEl === hydrateOpt) {
+                    //hydrated
+                }
+                else {
+                    if (hydrateOpt) {
+                        el.replaceChild(childEl, hydrateOpt)
+                    }
+                    else {
+                        el.appendChild(childEl)
+                    }
+                }
             }
         }
         vnode.node = el
@@ -192,14 +251,14 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
                         yield [oldChild, newChild]
 
                     } else {
-                        const newNode = initDom(newChild)
+                        const newNode = initDom({ vnode: newChild, hydrate: false })
                         node.replaceChild(newNode, oldChild.type === 'INSTANCE_REFERENCE' ? oldChild.vNodeInstanceRoot.node! : oldChild.node!)
                     }
                 }
             }
             if (newVNode.children) {
                 for (newInd++; newInd < newVNode.children.length; newInd++) {
-                    const newNode = initDom(newVNode.children[newInd])
+                    const newNode = initDom({ vnode: newVNode.children[newInd], hydrate: false })
                     node.appendChild(newNode)
                 }
             }
@@ -220,27 +279,24 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
     }
     throw '6'
 })
-
-// function updateDom(oldVNode: VNode, newVNode: VNode) {
-
-// }
 export class Faple {
     constructor(public root: HTMLElement) {
         this.scheduler = new Scheduler(this)
     }
     scheduler: Scheduler
-    initComponent<COMP extends Component>(component: { new(): COMP }): COMP {
-        const comp = new component()
-
+    initComponent<COMP extends Component>(comp: COMP, reuseEl?: HTMLElement) {
         comp.__slot.faple = this
         comp.__slot.beforeMount()
 
         comp.__slot.hEffect.effect.run()
-        const el = initDom(comp.__slot.vNode!)
+        const el = initDom({ vnode: comp.__slot.vNode!, hydrate: reuseEl ?? false })
         if (!(el instanceof HTMLElement)) {
             throw '1'
         }
-        comp.__slot.mounted = true
+        if (reuseEl && el !== reuseEl) {
+            throw '2'
+        }
+
         this.scheduler.scheduleMounted(comp)
         return comp
     }
@@ -255,14 +311,17 @@ export class Faple {
     releaseComponent(comp: Component) {
         comp.__slot.destroyed()
     }
-    mount(component: ComponentConstructor) {
-        const comp = this.initComponent(component)
+    mount(component: Component, useRootEl?: boolean) {
+        console.log(this.root)
+        const comp = this.initComponent(component, useRootEl ? this.root : undefined)
         const node = comp.__slot.vNode?.node
-
         if (!node) {
             throw '3'
         }
-        this.root.append(node)
+        if (!useRootEl) {
+            this.root.append(node)
+        }
+
     }
 }
 

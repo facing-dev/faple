@@ -21,8 +21,8 @@ class Slot {
     vNodeOld?: VNodeInstanceRoot
     faple?: Faple
     instance: Component
-    mounted = false
     hEffect: Observer.ReactiveEffectRunner
+    watchEffects?: Observer.ReactiveEffectRunner[]
     h() {
         const prototypeSlot = this.instance.__prototypeSlot
         if (!prototypeSlot.renderer) {
@@ -50,16 +50,42 @@ class Slot {
     beforeMount() {
         const ins = this.instance
         Observer.markRaw(ins)
+        const insAny = ins as any
+        const bindKeys = ins.__prototypeSlot.bindKeys
+        if (bindKeys && bindKeys.size > 0) {
+            for (const key of bindKeys.values()) {
+                insAny[key] = insAny[key].bind(ins)
+            }
+        }
         const reactiveKeys = ins.__prototypeSlot.reactiveKeys
         if (reactiveKeys && reactiveKeys.size > 0) {
             for (const key of reactiveKeys.values()) {
-                const proxied = Observer.reactive(((ins as any)[key]));
-                (ins as any)[key] = proxied
+                const proxied = Observer.reactive((insAny[key]));
+                insAny[key] = proxied
+            }
+        }
+        const watchKeys = ins.__prototypeSlot.watchKeys
+        if (watchKeys && watchKeys.size > 0) {
+            for (const key of watchKeys.values()) {
+                this.watchEffects ??= []
+                this.watchEffects.push(Observer.effect(() => {
+                    insAny[key]()
+                }, {
+                    lazy: true
+                }))
             }
         }
     }
+    afterMounted() {
+        this.watchEffects?.forEach(e => {
+            e.effect.run()
+        })
+    }
     destroyed() {
         this.hEffect?.effect.stop()
+        this.watchEffects?.forEach(e => {
+            e.effect.stop()
+        })
     }
 }
 
@@ -80,10 +106,7 @@ export abstract class Component {
             configurable: false,
             writable: false
         })
-
-
     }
-
     $render() {
         this.__slot.render()
     }
@@ -97,5 +120,5 @@ export abstract class Component {
 
     }
 }
-export type ComponentConstructor = { new(): Component }
+export type ComponentConstructor<T extends Component = any> = { new(): T }
 
