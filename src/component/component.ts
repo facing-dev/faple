@@ -30,11 +30,18 @@ class Slot {
             throw ''
         }
         const renderer = prototypeSlot.renderer
-        let vNode: VNodeInstanceRoot | null = null
-        vNode = renderer.apply(this.instance)
-        if (!vNode) {
+
+        const vNodeElement = renderer.apply(this.instance)
+        if (!vNodeElement) {
             throw ''
         }
+        const vNode: VNodeInstanceRoot = {
+
+            ...vNodeElement,
+            instance:this.instance,
+            type: 'INSTANCE_ROOT'
+        }
+        this.instance.beforeRender(vNode)
         this.vNodeOld = this.vNode
         this.vNode = vNode
     }
@@ -116,7 +123,10 @@ export abstract class Component {
     $release() {
         this.__slot.faple!.releaseComponent(this)
     }
-    mounted() {
+    mounted(): void | Promise<any> {
+
+    }
+    beforeRender(vnode: VNodeInstanceRoot) {
 
     }
 }

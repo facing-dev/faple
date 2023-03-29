@@ -1,7 +1,7 @@
 import type { Component } from '../component/component'
-import type { VNodeInstanceRoot } from '../vdom/vnode'
+import type { VNodeElement } from '../vdom/vnode'
 export class PrototypeSlot {
-    renderer?: () => VNodeInstanceRoot
+    renderer?: () => VNodeElement
     reactiveKeys?: Set<string>
     watchKeys?: Set<string>
     bindKeys?: Set<string>

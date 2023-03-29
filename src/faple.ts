@@ -1,9 +1,11 @@
 import recursiveFree from 'recursive-free'
-import { VNode, VNodeInstanceReference } from './vdom/vnode'
-import { Component, ComponentConstructor } from './component/component'
+import { VNode, VNodeInstanceReference, VNodeInstanceRoot } from './vdom/vnode'
+import { Component } from './component/component'
 import Logger from './logger'
 import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
+import { VoidElementTags } from './vdom/def'
+
 function isFakeVNodeInstanceReference(vnode: VNodeInstanceReference) {
     if (!vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
         Logger.error('previousVNodeInstanceReference is undefined')
@@ -108,7 +110,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             // let mismatched = false
             for (const key in vnode.children) {
                 let hydrateOpt: typeof hydrate = false
-                if (hydrate ) {
+                if (hydrate) {
                     if (mis) {
                         hydrateOpt = false
                     } else {
@@ -132,9 +134,13 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             }
         }
         vnode.node = el
+        if (vnode.type === 'ELEMENT' && vnode.ref) {
+            vnode.ref.value = el
+        }
         return el
     }
     if (vnode.type === 'INSTANCE_REFERENCE') {
+
         if (!vnode.vNodeInstanceRoot.node) {
             Logger.error('Referenced instance not inited')
             throw ''
@@ -284,6 +290,14 @@ export class Faple {
         this.scheduler = new Scheduler(this)
     }
     scheduler: Scheduler
+    private mountedPromises: Promise<void>[] = []
+    waitComponentsMounted(cb: Function) {
+        this.mountedPromises = []
+        this.scheduler.scheduleWaitMounted(async () => {
+            await Promise.all(this.mountedPromises)
+            cb()
+        })
+    }
     initComponent<COMP extends Component>(comp: COMP, reuseEl?: HTMLElement) {
         comp.__slot.faple = this
         comp.__slot.beforeMount()
@@ -294,10 +308,17 @@ export class Faple {
             throw '1'
         }
         if (reuseEl && el !== reuseEl) {
+            console.error(el)
             throw '2'
         }
-
-        this.scheduler.scheduleMounted(comp)
+        this.scheduler.scheduleMounted(() => {
+            const ret = comp.mounted()
+            if (ret) {
+                this.mountedPromises ??= []
+                this.mountedPromises?.push(ret)
+            }
+            comp.__slot.afterMounted()
+        })
         return comp
     }
     updateComponent(comp: Component) {
@@ -312,7 +333,6 @@ export class Faple {
         comp.__slot.destroyed()
     }
     mount(component: Component, useRootEl?: boolean) {
-        console.log(this.root)
         const comp = this.initComponent(component, useRootEl ? this.root : undefined)
         const node = comp.__slot.vNode?.node
         if (!node) {
@@ -321,8 +341,66 @@ export class Faple {
         if (!useRootEl) {
             this.root.append(node)
         }
+    }
+    renderString(component: Component) {
+        return new Promise<string>((res)=>{
+            this.waitComponentsMounted(()=>{
+                res(vNodeTree2String(comp.__slot.vNode!))
+            })
+            const comp = this.initComponent(component)
+        })
 
     }
 }
 
+const vNodeTree2String = recursiveFree<VNode, string>(function* (vnode: VNode) {
+    if (vnode.type === 'TEXT') {
+        return vnode.text
+    }
+    if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
+        let str = `<${vnode.tag}`
+        if (vnode.classes) {
+            str += ` class="${vnode.classes}"`
+        }
+        if (vnode.styles) {
+            str += ` style="${vnode.styles}"`
+        }
+        if (vnode.attributes) {
+            str += ' ' + Object.keys(vnode.attributes).map(key => {
+                const val = vnode.attributes![key]
+                if (typeof val === 'string') {
+                    `${key}="${val}"`
+                } else {
+                    return ''
+                }
+            }).join(' ')
+        }
 
+
+        if (VoidElementTags.has(vnode.tag)) {
+            str += '/>'
+        } else {
+            str += '>'
+            if (vnode.attributes && ('cdr-static-inner' in vnode.attributes)) {
+                console.log('22', vnode.node?.innerHTML.length)
+                str += vnode.node?.innerHTML ?? ''
+            }
+            else if (vnode.children) {
+                for (const child of vnode.children) {
+                    if (child.type === 'INSTANCE_REFERENCE') {
+                        str += yield child.vNodeInstanceRoot
+                    }
+                    else {
+                        str += yield child
+                    }
+                }
+            }
+
+            str += `</${vnode.tag}>`
+        }
+
+
+        return str
+    }
+    throw ''
+})

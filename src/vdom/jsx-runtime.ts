@@ -1,9 +1,9 @@
 import recursiveFree from 'recursive-free'
-import {flatten} from 'lodash'
+import { flatten, last } from 'lodash'
 import Logger from '../logger'
-import type { VNode, VNodeElement } from './vnode'
+import type { VNode, VNodeElement, VNodeText } from './vnode'
 import { Component } from '../component/component'
-
+import { VoidElementTags } from './def'
 type ChildT = VNodeElement | Component | string | number | boolean | undefined | null
 export type Child = ChildT | Array<ChildT>
 const parseChild = recursiveFree<Child, VNode | Array<VNode>>(function* (child) {
@@ -71,15 +71,11 @@ const parseChild = recursiveFree<Child, VNode | Array<VNode>>(function* (child) 
     throw ''
 })
 
-// function parseChild(child: Child): VNode | Array<VNode> {
-
-// }
-
 export function jsx(tag: string, props: {
     [index: string]: any
     children?: Child
 }, key?: any): VNodeElement {
-
+    tag = tag.toLowerCase()
     const VNode: VNodeElement = {
         type: 'ELEMENT',
         tag,
@@ -88,6 +84,10 @@ export function jsx(tag: string, props: {
 
     for (const propKey in props) {
         const prop = props[propKey]
+        if (propKey === 'ref' && VNode.type === 'ELEMENT') {
+            VNode.ref = prop
+            continue
+        }
         if (propKey.startsWith('on') && typeof prop === 'function') {
             const eventName = propKey.slice(2).toLowerCase()
             VNode.listeners ??= {}
@@ -98,24 +98,36 @@ export function jsx(tag: string, props: {
             const children = props.children
             const c = parseChild(children)
             if (Array.isArray(c)) {
-                
                 VNode.children = flatten(c)
             }
             else {
                 VNode.children = [c]
             }
+            if (VNode.children && VNode.children.length > 0 && VoidElementTags.has(VNode.tag)) {
+                Logger.error('VNode.children.size > 0 in an empty tag', VNode)
+                throw ''
+            }
 
-            // if (Array.isArray(children)) {
-            //     for (const child of children) {
-            //         const c = parseChild(child)
-
-            //         VNode.children.push(...Array.isArray(c) ? c : [c])
-            //     }
-            // } else {
-            //     const child = children
-            //     const c = parseChild(child)
-            //     VNode.children.push(...Array.isArray(c) ? c : [c])
-            // }
+            //merge text node
+            if (VNode.children) {
+                let lastTextNode: VNodeText | null = null
+                for (let i = 0; i < VNode.children.length;) {
+                    const child = VNode.children[i]
+                    if (child.type === 'TEXT') {
+                        if (!lastTextNode) {
+                            lastTextNode = child
+                        } else {
+                            lastTextNode.text += child.text
+                            VNode.children.splice(i, 1)
+                            continue
+                        }
+                    }
+                    if (lastTextNode && child.type !== 'TEXT') {
+                        lastTextNode = null
+                    }
+                    i++
+                }
+            }
             continue
         }
         if (propKey === 'class') {

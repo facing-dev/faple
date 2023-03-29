@@ -1,6 +1,13 @@
 import type { Component } from '../component/component'
 type VNodeType = 'ELEMENT' | 'TEXT' | 'INSTANCE_ROOT' | 'INSTANCE_REFERENCE'
-
+export interface Reference<T> {
+    value?: T
+}
+export function createReference<T>(init?: T): Reference<T> {
+    return {
+        value: init
+    }
+}
 interface VNodeBase {
     type: VNodeType
 }
@@ -26,12 +33,13 @@ interface VNodeEntity extends VNodeBase {
 
 export interface VNodeElement extends VNodeEntity, WithKey, WithNode<HTMLElement> {
     type: 'ELEMENT'
+    ref?: Reference<any>
 }
 
 export interface VNodeInstanceRoot extends VNodeEntity, WithNode<HTMLElement> {
     type: 'INSTANCE_ROOT'
     instance: Component
-    previousVNodeInstanceReference?:VNodeInstanceReference
+    previousVNodeInstanceReference?: VNodeInstanceReference
 }
 
 export interface VNodeInstanceReference extends VNodeBase {
