@@ -330,7 +330,8 @@ export class Faple {
         updateDom([slot.vNodeOld, slot.vNode!])
     }
     releaseComponent(comp: Component) {
-        comp.__slot.destroyed()
+        comp.beforeDestroy()
+        comp.__slot.destroy()
     }
     mount(component: Component, useRootEl?: boolean) {
         const comp = this.initComponent(component, useRootEl ? this.root : undefined)

@@ -4,8 +4,7 @@
       "lib": [
         "ES6",
         "dom",
-        "dom.iterable",
-        "ES2016.Array.Include"
+        "dom.iterable"
       ],
       "allowJs": true,
       "skipLibCheck": true,
