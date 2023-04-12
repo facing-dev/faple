@@ -329,6 +329,9 @@ export class Faple {
         }
         updateDom([slot.vNodeOld, slot.vNode!])
     }
+    /**
+     * not recursive
+     */
     releaseComponent(comp: Component) {
         comp.beforeDestroy()
         comp.__slot.destroy()
@@ -344,8 +347,8 @@ export class Faple {
         }
     }
     renderString(component: Component) {
-        return new Promise<string>((res)=>{
-            this.waitComponentsMounted(()=>{
+        return new Promise<string>((res) => {
+            this.waitComponentsMounted(() => {
                 res(vNodeTree2String(comp.__slot.vNode!))
             })
             const comp = this.initComponent(component)
@@ -376,8 +379,6 @@ const vNodeTree2String = recursiveFree<VNode, string>(function* (vnode: VNode) {
                 }
             }).join(' ')
         }
-
-
         if (VoidElementTags.has(vnode.tag)) {
             str += '/>'
         } else {
@@ -396,7 +397,6 @@ const vNodeTree2String = recursiveFree<VNode, string>(function* (vnode: VNode) {
                     }
                 }
             }
-
             str += `</${vnode.tag}>`
         }
 

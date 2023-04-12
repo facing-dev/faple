@@ -3,8 +3,7 @@
   "version": "0.0.1",
   "description": "",
   "main": "dist/index.js",
-  "scripts": {
-  },
+  "scripts": {},
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -14,10 +13,10 @@
     "@facing/faple-h": "file:../faple-h",
     "@facing/logger": "^0.2.6",
     "@facing/scheduler": "^0.2.15",
-    "@types/lodash": "^4.14.191",
+    "@types/lodash-es": "^4.17.7",
     "@types/uuid": "^9.0.1",
     "@vue/reactivity": "^3.2.47",
-    "lodash": "^4.17.21",
+    "lodash-es": "^4.17.21",
     "recursive-free": "^1.0.3",
     "uuid": "^9.0.0"
   }

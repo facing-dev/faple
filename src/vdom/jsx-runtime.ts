@@ -1,5 +1,5 @@
 import recursiveFree from 'recursive-free'
-import { flatten, last } from 'lodash'
+import { flatten } from 'lodash-es'
 import Logger from '../logger'
 import type { VNode, VNodeElement, VNodeText } from './vnode'
 import { Component } from '../component/component'
