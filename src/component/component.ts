@@ -180,7 +180,7 @@ export abstract class Component {
     $release() {
         this.__slot.faple!.releaseComponent(this)
     }
-    $reactive(obj: object) {
+    $reactive<T extends object>(obj: T) {
         return Observer.reactive(obj)
     }
     $watchDeep(obj: any, fn: WatchDeepFunction) {
