@@ -286,7 +286,7 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
     throw '6'
 })
 export class Faple {
-    constructor(public root: HTMLElement) {
+    constructor() {
         this.scheduler = new Scheduler(this)
     }
     scheduler: Scheduler
@@ -299,9 +299,7 @@ export class Faple {
         })
     }
     initComponent<COMP extends Component>(comp: COMP, reuseEl?: HTMLElement) {
-        comp.__slot.faple = this
         comp.__slot.beforeMount()
-
         comp.__slot.hEffect.effect.run()
         const el = initDom({ vnode: comp.__slot.vNode!, hydrate: reuseEl ?? false })
         if (!(el instanceof HTMLElement)) {
@@ -336,16 +334,16 @@ export class Faple {
         comp.beforeDestroy()
         comp.__slot.destroy()
     }
-    mount(component: Component, useRootEl?: boolean) {
-        const comp = this.initComponent(component, useRootEl ? this.root : undefined)
-        const node = comp.__slot.vNode?.node
-        if (!node) {
-            throw '3'
-        }
-        if (!useRootEl) {
-            this.root.append(node)
-        }
-    }
+    // mount(component: Component, useRootEl?: boolean) {
+    //     const comp = this.initComponent(component, useRootEl ? this.root : undefined)
+    //     const node = comp.__slot.vNode?.node
+    //     if (!node) {
+    //         throw '3'
+    //     }
+    //     if (!useRootEl) {
+    //         this.root.append(node)
+    //     }
+    // }
     renderString(component: Component) {
         return new Promise<string>((res) => {
             this.waitComponentsMounted(() => {

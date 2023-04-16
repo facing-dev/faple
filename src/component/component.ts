@@ -31,8 +31,9 @@ const watchDeepTraverse = recursiveFree<{ value: any, seen?: Set<any> }, any>(fu
 })
 
 class Slot {
-    constructor(ins: Component) {
+    constructor(ins: Component, faple: Faple) {
         this.instance = ins
+        this.faple = faple
         this.hEffect = Observer.effect(() => {
             this.h()
         }, {
@@ -45,11 +46,12 @@ class Slot {
     id = uuidV4()
     vNode?: VNodeInstanceRoot
     vNodeOld?: VNodeInstanceRoot
-    faple?: Faple
+    faple: Faple
     instance: Component
     hEffect: Observer.ReactiveEffectRunner
     watchEffects?: Observer.ReactiveEffectRunner[]
     h() {
+
         const prototypeSlot = this.instance.__prototypeSlot
         if (!prototypeSlot.renderer) {
             Logger.error('slot.renderer is undefined')
@@ -58,9 +60,11 @@ class Slot {
         const renderer = prototypeSlot.renderer
 
         const vNodeElement = renderer.apply(this.instance)
+
         if (!vNodeElement) {
             throw ''
         }
+
         const vNode: VNodeInstanceRoot = {
 
             ...vNodeElement,
@@ -68,6 +72,7 @@ class Slot {
             type: 'INSTANCE_ROOT'
         }
         this.instance.beforeRender(vNode)
+
         this.vNodeOld = this.vNode
         this.vNode = vNode
     }
@@ -157,9 +162,9 @@ export abstract class Component {
     get __prototypeSlot() {
         return this.__prototypeSlot_
     }
-    constructor() {
+    constructor(faple: Faple) {
         Object.defineProperty(this, '$$__slot', {
-            value: new Slot(this),
+            value: new Slot(this, faple),
             enumerable: false,
             configurable: false,
             writable: false
