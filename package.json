@@ -7,7 +7,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^4.9.3"
+    "typescript": "^4.8.4"
   },
   "dependencies": {
     "@facing/faple-h": "file:../faple-h",

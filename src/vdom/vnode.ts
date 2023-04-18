@@ -1,11 +1,11 @@
 import type { Component } from '../component/component'
 type VNodeType = 'ELEMENT' | 'TEXT' | 'INSTANCE_ROOT' | 'INSTANCE_REFERENCE'
 export interface Reference<T> {
-    value?: T
+    value: T | null
 }
 export function createReference<T>(init?: T): Reference<T> {
     return {
-        value: init
+        value: typeof init === 'undefined' ? null : init
     }
 }
 interface VNodeBase {

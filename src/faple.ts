@@ -299,8 +299,11 @@ export class Faple {
         })
     }
     initComponent<COMP extends Component>(comp: COMP, reuseEl?: HTMLElement) {
+
         comp.__slot.beforeMount()
+
         comp.__slot.hEffect.effect.run()
+
         const el = initDom({ vnode: comp.__slot.vNode!, hydrate: reuseEl ?? false })
         if (!(el instanceof HTMLElement)) {
             throw '1'
@@ -382,7 +385,6 @@ const vNodeTree2String = recursiveFree<VNode, string>(function* (vnode: VNode) {
         } else {
             str += '>'
             if (vnode.attributes && ('cdr-static-inner' in vnode.attributes)) {
-                console.log('22', vnode.node?.innerHTML.length)
                 str += vnode.node?.innerHTML ?? ''
             }
             else if (vnode.children) {

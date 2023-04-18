@@ -39,7 +39,8 @@ class Slot {
         }, {
             lazy: true,
             scheduler: () => {
-                this.faple!.scheduler.scheduleRender(() => this.renderSync(), this.instance)
+                this.scheduleRender()
+                // this.faple!.scheduler.scheduleRender(() => this.renderSync(), this.instance)
             }
         })
     }
@@ -79,19 +80,29 @@ class Slot {
     renderSync() {
         this.faple!.updateComponent(this.instance)
     }
-    render<T extends boolean | undefined>(shouldReturnPromise?: T): [T] extends [true] ? Promise<void> : void {
+    scheduleRender(cb?: (opt: boolean) => void) {
+        if (this.instance.$preventScheduleRender) {
+            if(cb){
+                cb(false)
+            }
+            return
+        }
+        this.faple!.scheduler.scheduleRender(() => {
+            this.renderSync()
+            cb?.(true)
+        }, this.instance)
+        return true
+    }
+    render<T extends boolean | undefined>(shouldReturnPromise?: T): [T] extends [true] ? Promise<boolean> : void {
         if (!this.faple) {
             throw 'slot.faple is undefined'
         }
-        const work = (cb?: Function) => {
-            this.faple!.scheduler.scheduleRender(() => {
-                this.renderSync()
-                cb?.()
-            }, this.instance)
+        const work = (cb?: (opt: boolean) => void) => {
+            this.scheduleRender(cb)
         }
         if (shouldReturnPromise) {
-            return new Promise<void>((res) => {
-                work(() => res())
+            return new Promise<boolean>((res) => {
+                work((opt) => res(opt))
             }) as any
         } else {
             work()
@@ -170,7 +181,7 @@ export abstract class Component {
             writable: false
         })
     }
-    $render<T extends boolean | undefined>(shouldReturnPromise?: T): [T] extends [true] ? Promise<void> : void {
+    $render<T extends boolean | undefined>(shouldReturnPromise?: T): [T] extends [true] ? Promise<boolean> : void {
         return this.__slot.render(shouldReturnPromise)
     }
     $renderSync() {
@@ -201,5 +212,6 @@ export abstract class Component {
     beforeRender(vnode: VNodeInstanceRoot) {
     }
     beforeDestroy() { }
+    $preventScheduleRender = false
 }
 export type ComponentConstructor<T extends Component = any> = { new(): T }

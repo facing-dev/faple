@@ -15,6 +15,7 @@ const parseChild = recursiveFree<Child, VNode | Array<VNode>>(function* (child) 
         return childArr
     }
     if (typeof child === 'object' && child !== null) {
+        
         if (child instanceof Component) {
             const slot = child.__slot
             if (!slot.vNode) {
