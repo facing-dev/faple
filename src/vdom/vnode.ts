@@ -45,6 +45,7 @@ export interface VNodeInstanceRoot extends VNodeEntity, WithNode<HTMLElement> {
 export interface VNodeInstanceReference extends VNodeBase {
     type: 'INSTANCE_REFERENCE'
     vNodeInstanceRoot: VNodeInstanceRoot
+    isFake: boolean
 }
 
 export interface VNodeText extends VNodeBase, WithNode<Text> {

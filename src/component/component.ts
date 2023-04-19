@@ -70,7 +70,8 @@ class Slot {
 
             ...vNodeElement,
             instance: this.instance,
-            type: 'INSTANCE_ROOT'
+            type: 'INSTANCE_ROOT',
+            previousVNodeInstanceReference: this.vNode?.previousVNodeInstanceReference
         }
         this.instance.beforeRender(vNode)
 
@@ -82,7 +83,7 @@ class Slot {
     }
     scheduleRender(cb?: (opt: boolean) => void) {
         if (this.instance.$preventScheduleRender) {
-            if(cb){
+            if (cb) {
                 cb(false)
             }
             return

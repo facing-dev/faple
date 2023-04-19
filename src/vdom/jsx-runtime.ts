@@ -24,7 +24,8 @@ const parseChild = recursiveFree<Child, VNode | Array<VNode>>(function* (child) 
             }
             return {
                 type: 'INSTANCE_REFERENCE',
-                vNodeInstanceRoot: slot.vNode!
+                vNodeInstanceRoot: slot.vNode!,
+                isFake:false
             }
         } else {
             return child

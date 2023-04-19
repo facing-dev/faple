@@ -6,13 +6,13 @@ import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
 import { VoidElementTags } from './vdom/def'
 
-function isFakeVNodeInstanceReference(vnode: VNodeInstanceReference) {
-    if (!vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
-        Logger.error('previousVNodeInstanceReference is undefined')
-        throw ''
-    }
-    return vnode.vNodeInstanceRoot.previousVNodeInstanceReference !== vnode
-}
+// function isFakeVNodeInstanceReference(vnode: VNodeInstanceReference) {
+//     if (!vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
+//         Logger.error('previousVNodeInstanceReference is undefined')
+//         throw ''
+//     }
+//     return vnode.vNodeInstanceRoot.previousVNodeInstanceReference !== vnode
+// }
 
 function couldReuse(oldVNode: VNode, newVNode: VNode) {
 
@@ -145,6 +145,10 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             Logger.error('Referenced instance not inited')
             throw ''
         }
+
+        if(vnode.vNodeInstanceRoot.previousVNodeInstanceReference){
+            vnode.vNodeInstanceRoot.previousVNodeInstanceReference.isFake=true
+        }
         vnode.vNodeInstanceRoot.previousVNodeInstanceReference = vnode
         return vnode.vNodeInstanceRoot.node
     }
@@ -157,9 +161,9 @@ function removeDom(vNode: VNode) {
         Logger.error('Can not remove an instance root\'s dom')
         throw ''
     } else if (vNode.type === 'INSTANCE_REFERENCE') {
-        if (isFakeVNodeInstanceReference(vNode)) {
-            return
-        }
+        // if (vNode.isFake===true) {
+        //     return
+        // }
         vNode.vNodeInstanceRoot.node!.remove()
     } else {
         vNode.node!.remove()
@@ -244,7 +248,7 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
             if (oldVNode.children) {
                 for (const oldInd in oldVNode.children) {
                     const oldChild = oldVNode.children[oldInd]
-                    if (oldChild.type === 'INSTANCE_REFERENCE' && isFakeVNodeInstanceReference(oldChild)) {
+                    if (oldChild.type === 'INSTANCE_REFERENCE' && oldChild.isFake===true) {
                         continue
                     }
                     newInd += 1
