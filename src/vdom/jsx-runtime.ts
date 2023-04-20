@@ -1,7 +1,7 @@
 import recursiveFree from 'recursive-free'
 import { flatten } from 'lodash-es'
 import Logger from '../logger'
-import type { VNode, VNodeElement, VNodeText } from './vnode'
+import type { VNode, VNodeElement, VNodeInstanceReference, VNodeText } from './vnode'
 import { Component } from '../component/component'
 import { VoidElementTags } from './def'
 type ChildT = VNodeElement | Component | string | number | boolean | undefined | null
@@ -15,18 +15,22 @@ const parseChild = recursiveFree<Child, VNode | Array<VNode>>(function* (child) 
         return childArr
     }
     if (typeof child === 'object' && child !== null) {
-        
+
         if (child instanceof Component) {
             const slot = child.__slot
             if (!slot.vNode) {
                 Logger.error('Child component vNode is undefined')
                 throw ''
             }
-            return {
+            const vNode = slot.vNode
+            const newVNode: VNodeInstanceReference = {
                 type: 'INSTANCE_REFERENCE',
-                vNodeInstanceRoot: slot.vNode!,
-                isFake:false
+                vNodeInstanceRoot: vNode,
+                isFake: false
             }
+            vNode.previousVNodeInstanceReference = vNode.currentVNodeInstanceReference
+            vNode.currentVNodeInstanceReference = newVNode
+            return newVNode
         } else {
             return child
         }

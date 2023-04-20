@@ -15,11 +15,11 @@ const watchDeepTraverse = recursiveFree<{ value: any, seen?: Set<any> }, any>(fu
 
     opt.seen ??= new Set
     const { value, seen } = opt
-    if (!isObject(value) || seen.has(value)){
+    if (!isObject(value) || seen.has(value)) {
         return value
 
     }
-        
+
     seen.add(value) // prevent circular reference 
     if (Array.isArray(value)) {
         for (let i = 0; i < value.length; i++)
@@ -74,7 +74,8 @@ class Slot {
             ...vNodeElement,
             instance: this.instance,
             type: 'INSTANCE_ROOT',
-            previousVNodeInstanceReference: this.vNode?.previousVNodeInstanceReference
+            previousVNodeInstanceReference: this.vNode?.previousVNodeInstanceReference,
+            currentVNodeInstanceReference: this.vNode?.currentVNodeInstanceReference
         }
         this.instance.beforeRender(vNode)
 
@@ -150,9 +151,9 @@ class Slot {
     watchDeep(obj: any, fn: WatchDeepFunction) {
         let first = true
         this.watchEffects ??= []
-    
+
         this.watchEffects.push(Observer.effect(() => {
-            watchDeepTraverse({value:obj})
+            watchDeepTraverse({ value: obj })
             if (!first) {
                 fn()
             }

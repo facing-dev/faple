@@ -140,16 +140,13 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         return el
     }
     if (vnode.type === 'INSTANCE_REFERENCE') {
-
         if (!vnode.vNodeInstanceRoot.node) {
             Logger.error('Referenced instance not inited')
             throw ''
         }
-
         if(vnode.vNodeInstanceRoot.previousVNodeInstanceReference){
             vnode.vNodeInstanceRoot.previousVNodeInstanceReference.isFake=true
         }
-        vnode.vNodeInstanceRoot.previousVNodeInstanceReference = vnode
         return vnode.vNodeInstanceRoot.node
     }
     Logger.error('VNode not supported', vnode)
