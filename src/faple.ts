@@ -47,7 +47,6 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
     let mis = false
     if (vnode.type === 'TEXT') {
         let node: Text | null = null
-
         if (hydrate === false) {
             node = document.createTextNode(vnode.text)
         }
@@ -62,7 +61,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             }
         }
         if (mis) {
-            Logger.warn('Hydrate mismatched', vnode, hydrate, node)
+            Logger.error('Hydrate mismatched', vnode, hydrate, node)
         }
         vnode.node = node
         return node
@@ -71,16 +70,22 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         let el: HTMLElement | null = null
         if (hydrate === false || Hydrate.isTextNode(hydrate)) {
             if (hydrate !== false) {
+
                 mis = true
             }
             el = document.createElement(vnode.tag)
 
+
         } else {
             if (hydrate.tagName.toLowerCase() === vnode.tag.toLowerCase()) {
+
                 el = hydrate
+
+
             } else {
                 mis = true
                 el = document.createElement(vnode.tag)
+
             }
         }
         if (mis) {
@@ -105,22 +110,45 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         if (typeof vnode.styles === 'string') {
             el.setAttribute('style', vnode.styles)
         }
+
         if (vnode.children) {
             let hydrateNodes: ReturnType<typeof Hydrate.getValideChildren> | null = null
+
             // let mismatched = false
-            for (const key in vnode.children) {
+
+            for (let i = 0, hydi = 0; i < vnode.children.length; i++, hydi++) {
+
+                
+                const child = vnode.children[i]
                 let hydrateOpt: typeof hydrate = false
                 if (hydrate) {
                     if (mis) {
                         hydrateOpt = false
                     } else {
                         hydrateNodes ??= Hydrate.getValideChildren(el)
-                        hydrateOpt = hydrateNodes[key] ?? false
+
+                        hydrateOpt = hydrateNodes[hydi] ?? false
+
+                        if (child.type === 'INSTANCE_ROOT') {
+                            throw ''
+                        }
+                        if (child.type !== 'TEXT' && hydrateOpt) {
+                            while (hydrateOpt && Hydrate.isTextNode(hydrateOpt)) {
+
+                                hydrateOpt.remove()
+                                hydi++
+                                hydrateOpt = hydrateNodes[hydi] ?? false
+
+                            }
+                        }
+
                     }
+
                 }
-                const child = vnode.children[key]
+
                 const childEl = yield { vnode: child, hydrate: hydrateOpt }
                 if (hydrate && mis === false && childEl === hydrateOpt) {
+
                     //hydrated
                 }
                 else {
@@ -137,6 +165,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         if (vnode.type === 'ELEMENT' && vnode.ref) {
             vnode.ref.value = el
         }
+
         return el
     }
     if (vnode.type === 'INSTANCE_REFERENCE') {
@@ -147,8 +176,10 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         if (vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
             vnode.vNodeInstanceRoot.previousVNodeInstanceReference.isFake = true
         }
+
         return vnode.vNodeInstanceRoot.node
     }
+
     Logger.error('VNode not supported', vnode)
     throw ''
 })
