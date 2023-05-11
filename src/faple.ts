@@ -144,8 +144,8 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             Logger.error('Referenced instance not inited')
             throw ''
         }
-        if(vnode.vNodeInstanceRoot.previousVNodeInstanceReference){
-            vnode.vNodeInstanceRoot.previousVNodeInstanceReference.isFake=true
+        if (vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
+            vnode.vNodeInstanceRoot.previousVNodeInstanceReference.isFake = true
         }
         return vnode.vNodeInstanceRoot.node
     }
@@ -245,7 +245,7 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
             if (oldVNode.children) {
                 for (const oldInd in oldVNode.children) {
                     const oldChild = oldVNode.children[oldInd]
-                    if (oldChild.type === 'INSTANCE_REFERENCE' && oldChild.isFake===true) {
+                    if (oldChild.type === 'INSTANCE_REFERENCE' && oldChild.isFake === true) {
                         continue
                     }
                     newInd += 1
@@ -348,10 +348,67 @@ export class Faple {
     //         this.root.append(node)
     //     }
     // }
-    renderString(component: Component) {
+    renderString(component: Component, opt?: {
+        style?: boolean,
+        vnodeModifier?: (vnode: VNodeInstanceRoot) => void
+    }) {
+        opt ??= {}
+        opt.style ??= true
+        const vNodeTree2String = recursiveFree<VNode, string>(function* (vnode: VNode) {
+            if (vnode.type === 'TEXT') {
+                return vnode.text
+            }
+            if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
+                let str = `<${vnode.tag}`
+                if (vnode.classes) {
+                    str += ` class="${vnode.classes}"`
+                }
+                if (vnode.styles && opt?.style) {
+                    str += ` style="${vnode.styles}"`
+                }
+                if (vnode.attributes) {
+                    str += ' ' + Object.keys(vnode.attributes).map(key => {
+                        const val = vnode.attributes![key]
+                        if (typeof val === 'string') {
+                            if (val !== '') {
+                                return `${key}="${val}"`
+                            } else {
+                                return key
+                            }
+                        } else {
+                            return ''
+                        }
+                    }).join(' ')
+                }
+                if (VoidElementTags.has(vnode.tag)) {
+                    str += '/>'
+                } else {
+                    str += '>'
+                    if (vnode.attributes && ('cdr-static-inner' in vnode.attributes)) {
+                        str += vnode.node?.innerHTML ?? ''
+                    }
+                    else if (vnode.children) {
+                        for (const child of vnode.children) {
+                            if (child.type === 'INSTANCE_REFERENCE') {
+                                str += yield child.vNodeInstanceRoot
+                            }
+                            else {
+                                str += yield child
+                            }
+                        }
+                    }
+                    str += `</${vnode.tag}>`
+                }
+                return str
+            }
+            throw ''
+        })
+
         return new Promise<string>((res) => {
             this.waitComponentsMounted(() => {
-                res(vNodeTree2String(comp.__slot.vNode!))
+                const vNode = comp.__slot.vNode!
+                opt?.vnodeModifier?.(vNode)
+                res(vNodeTree2String(vNode))
             })
             const comp = this.initComponent(component)
         })
@@ -359,50 +416,3 @@ export class Faple {
     }
 }
 
-const vNodeTree2String = recursiveFree<VNode, string>(function* (vnode: VNode) {
-    if (vnode.type === 'TEXT') {
-        return vnode.text
-    }
-    if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
-        let str = `<${vnode.tag}`
-        if (vnode.classes) {
-            str += ` class="${vnode.classes}"`
-        }
-        if (vnode.styles) {
-            str += ` style="${vnode.styles}"`
-        }
-        if (vnode.attributes) {
-            str += ' ' + Object.keys(vnode.attributes).map(key => {
-                const val = vnode.attributes![key]
-                if (typeof val === 'string') {
-                    `${key}="${val}"`
-                } else {
-                    return ''
-                }
-            }).join(' ')
-        }
-        if (VoidElementTags.has(vnode.tag)) {
-            str += '/>'
-        } else {
-            str += '>'
-            if (vnode.attributes && ('cdr-static-inner' in vnode.attributes)) {
-                str += vnode.node?.innerHTML ?? ''
-            }
-            else if (vnode.children) {
-                for (const child of vnode.children) {
-                    if (child.type === 'INSTANCE_REFERENCE') {
-                        str += yield child.vNodeInstanceRoot
-                    }
-                    else {
-                        str += yield child
-                    }
-                }
-            }
-            str += `</${vnode.tag}>`
-        }
-
-
-        return str
-    }
-    throw ''
-})
