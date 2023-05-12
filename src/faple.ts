@@ -77,19 +77,15 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
 
 
         } else {
-            if (hydrate.tagName.toLowerCase() === vnode.tag.toLowerCase()) {
-
+            if (hydrate.tagName.toLowerCase() === vnode.tag.toLowerCase() && !Object.getOwnPropertyDescriptor(hydrate, '__fapleId')) {
                 el = hydrate
-
-
             } else {
                 mis = true
                 el = document.createElement(vnode.tag)
-
             }
         }
         if (mis) {
-            Logger.warn('Hydrate mismatched', vnode, hydrate, el)
+            Logger.error('Hydrate mismatched', vnode, hydrate, el)
         }
         if (vnode.attributes) {
             for (const key in vnode.attributes) {
@@ -118,9 +114,9 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
 
             for (let i = 0, hydi = 0; i < vnode.children.length; i++, hydi++) {
 
-                
-                const child = vnode.children[i]
-                let hydrateOpt: typeof hydrate = false
+
+                const child: VNode = vnode.children[i]
+                let hydrateOpt: Comment | typeof hydrate = false
                 if (hydrate) {
                     if (mis) {
                         hydrateOpt = false
@@ -141,18 +137,27 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
 
                             }
                         }
-
+                        if (Hydrate.isHydrateHolderNode(hydrateOpt)) {
+                            hydrateOpt = false
+                        }
                     }
-
                 }
 
-                const childEl = yield { vnode: child, hydrate: hydrateOpt }
+                const childEl: HTMLElement | Text = yield { vnode: child, hydrate: hydrateOpt }
                 if (hydrate && mis === false && childEl === hydrateOpt) {
-
                     //hydrated
                 }
                 else {
                     if (hydrateOpt) {
+                        if (childEl.parentNode === hydrateOpt.parentNode) {
+                            const ind = hydrateNodes?.findIndex(ite => ite === childEl) ?? false
+                            if (ind === false || ind === -1) {
+                                throw 'hydrate e 1'
+                            }
+                            hydrateNodes![ind] = document.createComment('hydrate replace holder')
+
+
+                        }
                         el.replaceChild(childEl, hydrateOpt)
                     }
                     else {
@@ -164,6 +169,12 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         vnode.node = el
         if (vnode.type === 'ELEMENT' && vnode.ref) {
             vnode.ref.value = el
+        }
+        if (vnode.type === 'INSTANCE_ROOT') {
+            Object.defineProperty(vnode.node, '__fapleId', {
+                value: vnode.instance.$$__slot.id,
+                enumerable: false
+            })
         }
 
         return el
