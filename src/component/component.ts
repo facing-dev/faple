@@ -46,6 +46,7 @@ class Slot {
                 // this.faple!.scheduler.scheduleRender(() => this.renderSync(), this.instance)
             }
         })
+
     }
     id = uuidV4()
     vNode?: VNodeInstanceRoot

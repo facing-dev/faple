@@ -329,6 +329,7 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
     throw '6'
 })
 export class Faple {
+    components: Map<string, Component> = new Map
     constructor() {
         this.scheduler = new Scheduler(this)
     }
@@ -342,7 +343,7 @@ export class Faple {
         })
     }
     initComponent<COMP extends Component>(comp: COMP, reuseEl?: HTMLElement) {
-
+        this.components.set(comp.$$__slot.id, comp)
         comp.__slot.beforeMount()
 
         comp.__slot.hEffect.effect.run()
@@ -377,8 +378,12 @@ export class Faple {
      * not recursive
      */
     releaseComponent(comp: Component) {
+        this.components.delete(comp.$$__slot.id)
         comp.beforeDestroy()
         comp.__slot.destroy()
+    }
+    getComponentByElement(el: HTMLElement):any {
+        return Object.getOwnPropertyDescriptor(el, '__fapleId')?.value ?? undefined
     }
     // mount(component: Component, useRootEl?: boolean) {
     //     const comp = this.initComponent(component, useRootEl ? this.root : undefined)
