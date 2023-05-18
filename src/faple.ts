@@ -383,7 +383,11 @@ export class Faple {
         comp.__slot.destroy()
     }
     getComponentByElement(el: HTMLElement):any {
-        return Object.getOwnPropertyDescriptor(el, '__fapleId')?.value ?? undefined
+        const id =  Object.getOwnPropertyDescriptor(el, '__fapleId')?.value ?? undefined
+        if(!id){
+            return undefined
+        }
+        return this.components.get(id)
     }
     // mount(component: Component, useRootEl?: boolean) {
     //     const comp = this.initComponent(component, useRootEl ? this.root : undefined)
