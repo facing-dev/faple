@@ -28,7 +28,7 @@ function couldReuse(oldVNode: VNode, newVNode: VNode) {
         }
     }
     if (oldVNode.type === 'INSTANCE_REFERENCE' && newVNode.type === 'INSTANCE_REFERENCE') {
-        if (oldVNode.vNodeInstanceRoot !== newVNode.vNodeInstanceRoot) {
+        if (oldVNode.vNodeInstanceRoot.instance !== newVNode.vNodeInstanceRoot.instance) {
             return false
         }
     }
@@ -42,6 +42,7 @@ function couldReuse(oldVNode: VNode, newVNode: VNode) {
 }
 
 const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | false }, HTMLElement | Text>(function* (opt) {
+
     const vnode = opt.vnode
     const hydrate = opt.hydrate
     let mis = false
@@ -382,9 +383,9 @@ export class Faple {
         comp.beforeDestroy()
         comp.__slot.destroy()
     }
-    getComponentByElement(el: HTMLElement):any {
-        const id =  Object.getOwnPropertyDescriptor(el, '__fapleId')?.value ?? undefined
-        if(!id){
+    getComponentByElement(el: HTMLElement): any {
+        const id = Object.getOwnPropertyDescriptor(el, '__fapleId')?.value ?? undefined
+        if (!id) {
             return undefined
         }
         return this.components.get(id)
