@@ -29,6 +29,7 @@ interface VNodeEntity extends VNodeBase {
     styles?: string
     // stylesRaw?: any
     children?: Array<VNode>
+    rawHtml?: string
 }
 
 export interface VNodeElement extends VNodeEntity, WithKey, WithNode<HTMLElement> {

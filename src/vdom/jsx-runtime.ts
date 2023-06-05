@@ -69,7 +69,7 @@ const parseChild = recursiveFree<Child, VNode | Array<VNode>>(function* (child) 
     if (child === null) {
         return {
             type: 'TEXT',
-            text: 'null'
+            text: ''
         }
     }
 
@@ -170,6 +170,13 @@ export function jsx(tag: string, props: {
                 }, []).join(';')
             }
 
+            continue
+        }
+        if (propKey === 'rawHtml') {
+            if (typeof prop !== 'string') {
+                throw ''
+            }
+            VNode.rawHtml = prop
             continue
         }
         VNode.attributes ??= {}

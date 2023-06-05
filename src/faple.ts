@@ -107,8 +107,10 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         if (typeof vnode.styles === 'string') {
             el.setAttribute('style', vnode.styles)
         }
-
-        if (vnode.children) {
+        if (vnode.rawHtml !== undefined) {
+            el.innerHTML = vnode.rawHtml
+        }
+        else if (vnode.children) {
             let hydrateNodes: ReturnType<typeof Hydrate.getValideChildren> | null = null
 
             // let mismatched = false
@@ -219,6 +221,14 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
     if ((oldVNode.type === 'ELEMENT' && newVNode.type === 'ELEMENT') ||
         (oldVNode.type === 'INSTANCE_ROOT' && newVNode.type === 'INSTANCE_ROOT')) {
         const node = newVNode.node = oldVNode.node!
+        {
+            //rawHtml
+            if (newVNode.rawHtml !== oldVNode.rawHtml) {
+
+                    node.innerHTML = newVNode.rawHtml??''
+
+            }
+        }
         {
 
             //attr
