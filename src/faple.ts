@@ -5,7 +5,7 @@ import Logger from './logger'
 import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
 import { VoidElementTags } from './vdom/def'
-
+import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_FAPLE_ID } from './constant'
 // function isFakeVNodeInstanceReference(vnode: VNodeInstanceReference) {
 //     if (!vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
 //         Logger.error('previousVNodeInstanceReference is undefined')
@@ -78,7 +78,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
 
 
         } else {
-            if (hydrate.tagName.toLowerCase() === vnode.tag.toLowerCase() && !Object.getOwnPropertyDescriptor(hydrate, '__fapleId')) {
+            if (hydrate.tagName.toLowerCase() === vnode.tag.toLowerCase() && !Object.getOwnPropertyDescriptor(hydrate, KEY_FAPLE_ID)) {
                 el = hydrate
             } else {
                 mis = true
@@ -97,7 +97,9 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         if (vnode.listeners) {
 
             for (const key in vnode.listeners) {
+                
                 const event = vnode.listeners[key]
+
                 el.addEventListener(key, event as any)
             }
         }
@@ -131,6 +133,13 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
                         if (child.type === 'INSTANCE_ROOT') {
                             throw ''
                         }
+
+                        while (hydrateOpt && Hydrate.isElementNode(hydrateOpt) && hydrateOpt.getAttribute(KEY_ATTRIBUTE_HYDRATE_IGNORE)) {
+                            hydrateOpt.remove()
+                            hydi++
+                            hydrateOpt = hydrateNodes[hydi] ?? false
+                        }
+
                         if (child.type !== 'TEXT' && hydrateOpt) {
                             while (hydrateOpt && Hydrate.isTextNode(hydrateOpt)) {
 
@@ -174,7 +183,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             vnode.ref.value = el
         }
         if (vnode.type === 'INSTANCE_ROOT') {
-            Object.defineProperty(vnode.node, '__fapleId', {
+            Object.defineProperty(vnode.node, KEY_FAPLE_ID, {
                 value: vnode.instance.$$__slot.id,
                 enumerable: false
             })
@@ -225,7 +234,7 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
             //rawHtml
             if (newVNode.rawHtml !== oldVNode.rawHtml) {
 
-                    node.innerHTML = newVNode.rawHtml??''
+                node.innerHTML = newVNode.rawHtml ?? ''
 
             }
         }
@@ -263,8 +272,11 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
                         if (newVNode.listeners[key] !== oldVNode.listeners[key]) {
                             node.removeEventListener(key, oldVNode.listeners[key] as any)
                             node.addEventListener(key, newVNode.listeners[key] as any)
+
                         } else {
+
                             continue
+                            
                         }
                     } else {
                         oldVNode.node!.addEventListener(key, newVNode.listeners[key] as any)
@@ -275,6 +287,7 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
                 for (const key in oldVNode.listeners) {
                     if (!newVNode.listeners || !(key in newVNode.listeners)) {
                         node!.removeEventListener(key, oldVNode.listeners[key] as any)
+
                     }
                 }
             }
@@ -394,7 +407,7 @@ export class Faple {
         comp.__slot.destroy()
     }
     getComponentByElement(el: HTMLElement): any {
-        const id = Object.getOwnPropertyDescriptor(el, '__fapleId')?.value ?? undefined
+        const id = Object.getOwnPropertyDescriptor(el, KEY_FAPLE_ID)?.value ?? undefined
         if (!id) {
             return undefined
         }
@@ -446,8 +459,8 @@ export class Faple {
                     str += '/>'
                 } else {
                     str += '>'
-                    if (vnode.attributes && ('cdr-static-inner' in vnode.attributes)) {
-                        str += vnode.node?.innerHTML ?? ''
+                    if (vnode.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnode.attributes)) {
+                        // str += vnode.node?.innerHTML ?? ''
                     }
                     else if (vnode.children) {
                         for (const child of vnode.children) {

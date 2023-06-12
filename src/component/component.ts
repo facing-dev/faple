@@ -120,8 +120,11 @@ class Slot {
         Observer.markRaw(ins)
         const insAny = ins as any
         const bindKeys = ins.__prototypeSlot.bindKeys
+
         if (bindKeys && bindKeys.size > 0) {
+        
             for (const key of bindKeys.values()) {
+              
                 insAny[key] = insAny[key].bind(ins)
             }
         }
