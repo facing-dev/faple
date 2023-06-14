@@ -5,7 +5,7 @@ import Logger from './logger'
 import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
 import { VoidElementTags } from './vdom/def'
-import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC, KEY_FAPLE_ID } from './constant'
+import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC_HTML, KEY_FAPLE_ID } from './constant'
 
 
 
@@ -371,9 +371,10 @@ export class Faple {
     constructor(scopeEl?: HTMLElement) {
 
         this.scopeEl = scopeEl ?? document.body
-        const els = this.scopeEl.querySelectorAll(`[${KEY_ATTRIBUTE_HYDRATE_IGNORE}][${KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC}]`)
+        let els = this.scopeEl.querySelectorAll(`[${KEY_ATTRIBUTE_HYDRATE_IGNORE}][${KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC}]`)
         els.forEach(e => e.innerHTML = '')
-        console.log('els', els)
+        els = this.scopeEl.querySelectorAll(`[${KEY_ATTRIBUTE_HYDRATE_IGNORE}][${KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC_HTML}]`)
+        els.forEach(e => e.innerHTML = '')
         this.scheduler = new Scheduler(this)
     }
     scheduler: Scheduler
@@ -485,20 +486,21 @@ export class Faple {
                     str += '/>'
                 } else {
                     str += '>'
-                    if (vnodeElement.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes)) {
-                        console.log(vnode)
-                    }
-                    if (vnodeElement.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes) && !(KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC in vnodeElement.attributes)) {
-                    }
-                    else if (vnodeElement.children) {
-                        for (const child of vnodeElement.children) {
-                            if (child.type === 'INSTANCE_REFERENCE') {
-                                str += yield child.vNodeInstanceRoot
-                            }
-                            else {
-                                str += yield child
+
+                    if (!vnodeElement.attributes || !(KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes) || ((KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes) && KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC in vnodeElement.attributes)) {
+                        if (vnodeElement.children) {
+                            for (const child of vnodeElement.children) {
+                                if (child.type === 'INSTANCE_REFERENCE') {
+                                    str += yield child.vNodeInstanceRoot
+                                }
+                                else {
+                                    str += yield child
+                                }
                             }
                         }
+                    }
+                    if (vnodeElement.attributes && KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes && KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC_HTML in vnodeElement.attributes) {
+                        str += vnodeElement.node?.innerHTML ?? ''
                     }
                     str += `</${vnodeElement.tag}>`
                 }
