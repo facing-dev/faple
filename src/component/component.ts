@@ -1,5 +1,5 @@
 import { v4 as uuidV4 } from 'uuid'
-import type { VNodeInstanceRoot } from '../vdom/vnode'
+import type { VNodeInstanceRoot, VNodeElement } from '../vdom/vnode'
 import type { Faple } from '../faple'
 import { PrototypeSlot } from '../decorator/propertySlot'
 import Logger from '../logger'
@@ -50,7 +50,8 @@ class Slot {
     }
     id = uuidV4()
     vNode?: VNodeInstanceRoot
-    vNodeOld?: VNodeInstanceRoot
+    vNodeEl?: VNodeElement
+    vNodeElOld?: VNodeElement
     faple: Faple
     instance: Component
     hEffect: Observer.ReactiveEffectRunner
@@ -70,18 +71,31 @@ class Slot {
             throw ''
         }
 
-        const vNode: VNodeInstanceRoot = {
 
-            ...vNodeElement,
-            instance: this.instance,
-            type: 'INSTANCE_ROOT',
-            previousVNodeInstanceReference: this.vNode?.previousVNodeInstanceReference,
-            currentVNodeInstanceReference: this.vNode?.currentVNodeInstanceReference
+        if (!this.vNode) {
+            this.vNode = {
+                instance: this.instance,
+                type: 'INSTANCE_ROOT',
+                previousVNodeInstanceReference: undefined,
+                currentVNodeInstanceReference: undefined,
+                elVNode: vNodeElement
+            }
+        }else{
+            this.vNode.elVNode=vNodeElement
         }
-        this.instance.beforeRender(vNode)
+        // const vNode = this.vNode ??= {
+        //     instance: this.instance,
+        //     type: 'INSTANCE_ROOT',
+        //     previousVNodeInstanceReference: previousVNodeInstanceReference,
+        //     currentVNodeInstanceReference: currentVNodeInstanceReference,
+        //     elVNode: vNodeElement
+        // }
 
-        this.vNodeOld = this.vNode
-        this.vNode = vNode
+        // const vNode: VNodeInstanceRoot = 
+        this.instance.beforeRender(this.vNode.elVNode)
+
+        this.vNodeElOld = this.vNodeEl
+        this.vNodeEl = vNodeElement
     }
     renderSync() {
         this.faple!.updateComponent(this.instance)
@@ -122,9 +136,9 @@ class Slot {
         const bindKeys = ins.__prototypeSlot.bindKeys
 
         if (bindKeys && bindKeys.size > 0) {
-        
+
             for (const key of bindKeys.values()) {
-              
+
                 insAny[key] = insAny[key].bind(ins)
             }
         }
@@ -214,12 +228,12 @@ export abstract class Component {
     }
 
     get $el() {
-        return this.$$__slot.vNode?.node
+        return this.$$__slot.vNode?.elVNode.node
     }
     mounted(): void | Promise<any> {
 
     }
-    beforeRender(vnode: VNodeInstanceRoot) {
+    beforeRender(vnode: VNodeElement) {
     }
     beforeDestroy() { }
     $preventScheduleRender = false

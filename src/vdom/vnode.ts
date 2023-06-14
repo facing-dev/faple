@@ -37,11 +37,12 @@ export interface VNodeElement extends VNodeEntity, WithKey, WithNode<HTMLElement
     ref?: Reference<any>
 }
 
-export interface VNodeInstanceRoot extends VNodeEntity, WithNode<HTMLElement> {
+export interface VNodeInstanceRoot extends VNodeBase, WithKey {
     type: 'INSTANCE_ROOT'
     instance: Component
     previousVNodeInstanceReference?: VNodeInstanceReference
     currentVNodeInstanceReference?: VNodeInstanceReference
+    elVNode:VNodeElement
 }
 
 export interface VNodeInstanceReference extends VNodeBase {

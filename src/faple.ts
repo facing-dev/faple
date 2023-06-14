@@ -1,11 +1,12 @@
 import recursiveFree from 'recursive-free'
-import { VNode, VNodeInstanceReference, VNodeInstanceRoot } from './vdom/vnode'
+import { VNode, VNodeInstanceReference, VNodeInstanceRoot, VNodeElement } from './vdom/vnode'
 import { Component } from './component/component'
 import Logger from './logger'
 import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
 import { VoidElementTags } from './vdom/def'
 import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC, KEY_FAPLE_ID } from './constant'
+
 
 
 
@@ -63,59 +64,60 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         return node
     }
     if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
+        const vnodeElement = vnode.type === 'ELEMENT' ? vnode : vnode.elVNode
         let el: HTMLElement | null = null
         if (hydrate === false || Hydrate.isTextNode(hydrate)) {
             if (hydrate !== false) {
 
                 mis = true
             }
-            el = document.createElement(vnode.tag)
+            el = document.createElement(vnodeElement.tag)
 
 
         } else {
-            if (hydrate.tagName.toLowerCase() === vnode.tag.toLowerCase() && !Object.getOwnPropertyDescriptor(hydrate, KEY_FAPLE_ID)) {
+            if (hydrate.tagName.toLowerCase() === vnodeElement.tag.toLowerCase() && !Object.getOwnPropertyDescriptor(hydrate, KEY_FAPLE_ID)) {
                 el = hydrate
             } else {
                 mis = true
-                el = document.createElement(vnode.tag)
+                el = document.createElement(vnodeElement.tag)
             }
         }
         if (mis) {
             Logger.error('Hydrate mismatched', vnode, hydrate, el)
         }
-        if (vnode.attributes) {
-            for (const key in vnode.attributes) {
-                const attr = vnode.attributes[key]
+        if (vnodeElement.attributes) {
+            for (const key in vnodeElement.attributes) {
+                const attr = vnodeElement.attributes[key]
                 el.setAttribute(key, attr)
             }
         }
-        if (vnode.listeners) {
+        if (vnodeElement.listeners) {
 
-            for (const key in vnode.listeners) {
+            for (const key in vnodeElement.listeners) {
 
-                const event = vnode.listeners[key]
+                const event = vnodeElement.listeners[key]
 
                 el.addEventListener(key, event as any)
             }
         }
-        if (typeof vnode.classes === 'string') {
-            el.className = vnode.classes
+        if (typeof vnodeElement.classes === 'string') {
+            el.className = vnodeElement.classes
         }
-        if (typeof vnode.styles === 'string') {
-            el.setAttribute('style', vnode.styles)
+        if (typeof vnodeElement.styles === 'string') {
+            el.setAttribute('style', vnodeElement.styles)
         }
-        if (vnode.rawHtml !== undefined) {
-            el.innerHTML = vnode.rawHtml
+        if (vnodeElement.rawHtml !== undefined) {
+            el.innerHTML = vnodeElement.rawHtml
         }
-        else if (vnode.children) {
+        else if (vnodeElement.children) {
             let hydrateNodes: ReturnType<typeof Hydrate.getValideChildren> | null = null
 
             // let mismatched = false
 
-            for (let i = 0, hydi = 0; i < vnode.children.length; i++, hydi++) {
+            for (let i = 0, hydi = 0; i < vnodeElement.children.length; i++, hydi++) {
 
 
-                const child: VNode = vnode.children[i]
+                const child: VNode = vnodeElement.children[i]
                 let hydrateOpt: Comment | typeof hydrate = false
                 if (hydrate) {
                     if (mis) {
@@ -173,12 +175,12 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
                 }
             }
         }
-        vnode.node = el
+        vnodeElement.node = el
         if (vnode.type === 'ELEMENT' && vnode.ref) {
             vnode.ref.value = el
         }
         if (vnode.type === 'INSTANCE_ROOT') {
-            Object.defineProperty(vnode.node, KEY_FAPLE_ID, {
+            Object.defineProperty(vnodeElement.node, KEY_FAPLE_ID, {
                 value: vnode.instance.$$__slot.id,
                 enumerable: false
             })
@@ -187,7 +189,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         return el
     }
     if (vnode.type === 'INSTANCE_REFERENCE') {
-        if (!vnode.vNodeInstanceRoot.node) {
+        if (!vnode.vNodeInstanceRoot.elVNode.node) {
             Logger.error('Referenced instance not inited')
             throw ''
         }
@@ -195,7 +197,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             vnode.vNodeInstanceRoot.previousVNodeInstanceReference.isFake = true
         }
 
-        return vnode.vNodeInstanceRoot.node
+        return vnode.vNodeInstanceRoot.elVNode.node
     }
 
     Logger.error('VNode not supported', vnode)
@@ -210,7 +212,7 @@ function removeDom(vNode: VNode) {
         // if (vNode.isFake===true) {
         //     return
         // }
-        vNode.vNodeInstanceRoot.node!.remove()
+        vNode.vNodeInstanceRoot.elVNode.node!.remove()
     } else {
         vNode.node!.remove()
     }
@@ -224,34 +226,50 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
 
     if ((oldVNode.type === 'ELEMENT' && newVNode.type === 'ELEMENT') ||
         (oldVNode.type === 'INSTANCE_ROOT' && newVNode.type === 'INSTANCE_ROOT')) {
-        const node = newVNode.node = oldVNode.node!
+        let node: HTMLElement | undefined = undefined;
+        let newVNodeElement: VNodeElement | null = null
+        let oldVNodeElement: VNodeElement | null = null
+        if (oldVNode.type === 'ELEMENT' && newVNode.type === 'ELEMENT') {
+            node = newVNode.node = oldVNode.node!
+            newVNodeElement = newVNode
+            oldVNodeElement = oldVNode
+        }
+        if (oldVNode.type === 'INSTANCE_ROOT' && newVNode.type === 'INSTANCE_ROOT') {
+            node = newVNode.elVNode.node = oldVNode.elVNode.node!
+            newVNodeElement = newVNode.elVNode
+            oldVNodeElement = oldVNode.elVNode
+        }
+        if (!node || !newVNodeElement || !oldVNodeElement) {
+            throw ''
+        }
+        // const node = newVNode.node = oldVNode.node!
         {
             //rawHtml
-            if (newVNode.rawHtml !== oldVNode.rawHtml) {
+            if (newVNodeElement.rawHtml !== oldVNodeElement.rawHtml) {
 
-                node.innerHTML = newVNode.rawHtml ?? ''
+                node.innerHTML = newVNodeElement.rawHtml ?? ''
 
             }
         }
         {
 
             //attr
-            if (newVNode.attributes) {
-                for (const key in newVNode.attributes) {
-                    if (oldVNode.attributes && (key in oldVNode.attributes)) {
-                        if (newVNode.attributes[key] !== oldVNode.attributes[key]) {
-                            node.setAttribute(key, newVNode.attributes[key])
+            if (newVNodeElement.attributes) {
+                for (const key in newVNodeElement.attributes) {
+                    if (oldVNodeElement.attributes && (key in oldVNodeElement.attributes)) {
+                        if (newVNodeElement.attributes[key] !== oldVNodeElement.attributes[key]) {
+                            node.setAttribute(key, newVNodeElement.attributes[key])
                         } else {
                             continue
                         }
                     } else {
-                        node.setAttribute(key, newVNode.attributes[key])
+                        node.setAttribute(key, newVNodeElement.attributes[key])
                     }
                 }
             }
-            if (oldVNode.attributes) {
-                for (const key in oldVNode.attributes) {
-                    if (!newVNode.attributes || !(key in newVNode.attributes)) {
+            if (oldVNodeElement.attributes) {
+                for (const key in oldVNodeElement.attributes) {
+                    if (!newVNodeElement.attributes || !(key in newVNodeElement.attributes)) {
                         node.removeAttribute(key)
                     }
                 }
@@ -261,12 +279,12 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
 
         {
             //listener
-            if (newVNode.listeners) {
-                for (const key in newVNode.listeners) {
-                    if (oldVNode.listeners && (key in oldVNode.listeners)) {
-                        if (newVNode.listeners[key] !== oldVNode.listeners[key]) {
-                            node.removeEventListener(key, oldVNode.listeners[key] as any)
-                            node.addEventListener(key, newVNode.listeners[key] as any)
+            if (newVNodeElement.listeners) {
+                for (const key in newVNodeElement.listeners) {
+                    if (oldVNodeElement.listeners && (key in oldVNodeElement.listeners)) {
+                        if (newVNodeElement.listeners[key] !== oldVNodeElement.listeners[key]) {
+                            node.removeEventListener(key, oldVNodeElement.listeners[key] as any)
+                            node.addEventListener(key, newVNodeElement.listeners[key] as any)
 
                         } else {
 
@@ -274,14 +292,14 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
 
                         }
                     } else {
-                        oldVNode.node!.addEventListener(key, newVNode.listeners[key] as any)
+                        oldVNodeElement.node!.addEventListener(key, newVNodeElement.listeners[key] as any)
                     }
                 }
             }
-            if (oldVNode.listeners) {
-                for (const key in oldVNode.listeners) {
-                    if (!newVNode.listeners || !(key in newVNode.listeners)) {
-                        node!.removeEventListener(key, oldVNode.listeners[key] as any)
+            if (oldVNodeElement.listeners) {
+                for (const key in oldVNodeElement.listeners) {
+                    if (!newVNodeElement.listeners || !(key in newVNodeElement.listeners)) {
+                        node!.removeEventListener(key, oldVNodeElement.listeners[key] as any)
 
                     }
                 }
@@ -289,44 +307,44 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
         }
         //classes
         {
-            if (newVNode.classes !== oldVNode.classes) {
-                node.className = newVNode.classes ?? ''
+            if (newVNodeElement.classes !== oldVNodeElement.classes) {
+                node.className = newVNodeElement.classes ?? ''
             }
         }
         //styles
         {
-            if (newVNode.styles !== oldVNode.styles) {
-                node.setAttribute('style', newVNode.styles ?? '')
+            if (newVNodeElement.styles !== oldVNodeElement.styles) {
+                node.setAttribute('style', newVNodeElement.styles ?? '')
             }
         }
 
         {
             //children
             let newInd = -1
-            if (oldVNode.children) {
-                for (const oldInd in oldVNode.children) {
-                    const oldChild = oldVNode.children[oldInd]
+            if (oldVNodeElement.children) {
+                for (const oldInd in oldVNodeElement.children) {
+                    const oldChild = oldVNodeElement.children[oldInd]
                     if (oldChild.type === 'INSTANCE_REFERENCE' && oldChild.isFake === true) {
                         continue
                     }
                     newInd += 1
-                    if (!newVNode.children || newInd >= newVNode.children.length) {
+                    if (!newVNodeElement.children || newInd >= newVNodeElement.children.length) {
                         removeDom(oldChild)
                         continue
                     }
-                    const newChild = newVNode.children[newInd]
+                    const newChild = newVNodeElement.children[newInd]
                     if (couldReuse(oldChild, newChild)) {
                         yield [oldChild, newChild]
 
                     } else {
                         const newNode = initDom({ vnode: newChild, hydrate: false })
-                        node.replaceChild(newNode, oldChild.type === 'INSTANCE_REFERENCE' ? oldChild.vNodeInstanceRoot.node! : oldChild.node!)
+                        node.replaceChild(newNode, oldChild.type === 'INSTANCE_REFERENCE' ? oldChild.vNodeInstanceRoot.elVNode.node! : (oldChild.type === 'INSTANCE_ROOT' ? oldChild.elVNode.node! : oldChild.node!))
                     }
                 }
             }
-            if (newVNode.children) {
-                for (newInd++; newInd < newVNode.children.length; newInd++) {
-                    const newNode = initDom({ vnode: newVNode.children[newInd], hydrate: false })
+            if (newVNodeElement.children) {
+                for (newInd++; newInd < newVNodeElement.children.length; newInd++) {
+                    const newNode = initDom({ vnode: newVNodeElement.children[newInd], hydrate: false })
                     node.appendChild(newNode)
                 }
             }
@@ -394,10 +412,10 @@ export class Faple {
     updateComponent(comp: Component) {
         const slot = comp.__slot
         slot.hEffect.effect.run()
-        if (!slot.vNodeOld) {
+        if (!slot.vNodeElOld) {
             throw 'vNodeOld is undefined'
         }
-        updateDom([slot.vNodeOld, slot.vNode!])
+        updateDom([slot.vNodeElOld, slot.vNodeEl!])
     }
     /**
      * not recursive
@@ -435,24 +453,17 @@ export class Faple {
                 return vnode.text
             }
             if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
-                if (vnode.type === 'INSTANCE_ROOT') {
-                    const vn = vnode.instance.$$__slot.vNode
-                    if (!vn) {
-                        throw ''
-                    }
-                    vnode = vn
+                const vnodeElement = vnode.type === 'ELEMENT' ? vnode : vnode.elVNode
+                let str = `<${vnodeElement.tag}`
+                if (vnodeElement.classes) {
+                    str += ` class="${vnodeElement.classes}"`
                 }
-                let str = `<${vnode.tag}`
-                if (vnode.classes) {
-                    str += ` class="${vnode.classes}"`
+                if (vnodeElement.styles && opt?.style) {
+                    str += ` style="${vnodeElement.styles}"`
                 }
-                if (vnode.styles && opt?.style) {
-                    str += ` style="${vnode.styles}"`
-                }
-                if (vnode.attributes) {
-                    const vn = vnode
-                    str += ' ' + Object.keys(vnode.attributes).map(key => {
-                        const val = vn.attributes![key]
+                if (vnodeElement.attributes) {
+                    str += ' ' + Object.keys(vnodeElement.attributes).map(key => {
+                        const val = vnodeElement.attributes![key]
                         if (typeof val === 'string') {
                             if (val !== '') {
                                 return `${key}="${val}"`
@@ -464,14 +475,17 @@ export class Faple {
                         }
                     }).join(' ')
                 }
-                if (VoidElementTags.has(vnode.tag)) {
+                if (VoidElementTags.has(vnodeElement.tag)) {
                     str += '/>'
                 } else {
                     str += '>'
-                    if (vnode.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnode.attributes) && !(KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC in vnode.attributes)) {
+                    if(vnodeElement.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes)){
+                        console.log(vnode)
                     }
-                    else if (vnode.children) {
-                        for (const child of vnode.children) {
+                    if (vnodeElement.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes) && !(KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC in vnodeElement.attributes)) {
+                    }
+                    else if (vnodeElement.children) {
+                        for (const child of vnodeElement.children) {
                             if (child.type === 'INSTANCE_REFERENCE') {
                                 str += yield child.vNodeInstanceRoot
                             }
@@ -480,7 +494,7 @@ export class Faple {
                             }
                         }
                     }
-                    str += `</${vnode.tag}>`
+                    str += `</${vnodeElement.tag}>`
                 }
                 return str
             }
