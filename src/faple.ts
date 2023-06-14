@@ -444,10 +444,13 @@ export class Faple {
     // }
     renderString(component: Component, opt?: {
         style?: boolean,
+        class?: boolean,
+        ignoreAttributes?: string[]
         vnodeModifier?: (vnode: VNodeInstanceRoot) => void
     }) {
         opt ??= {}
         opt.style ??= true
+        opt.class ??= true
         const vNodeTree2String = recursiveFree<VNode, string>(function* (vnode: VNode) {
             if (vnode.type === 'TEXT') {
                 return vnode.text
@@ -455,7 +458,7 @@ export class Faple {
             if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
                 const vnodeElement = vnode.type === 'ELEMENT' ? vnode : vnode.elVNode
                 let str = `<${vnodeElement.tag}`
-                if (vnodeElement.classes) {
+                if (vnodeElement.classes && opt?.class) {
                     str += ` class="${vnodeElement.classes}"`
                 }
                 if (vnodeElement.styles && opt?.style) {
@@ -464,6 +467,9 @@ export class Faple {
                 if (vnodeElement.attributes) {
                     str += ' ' + Object.keys(vnodeElement.attributes).map(key => {
                         const val = vnodeElement.attributes![key]
+                        if ((opt?.ignoreAttributes?.findIndex(ite => ite === key) ?? -1) >= 0) {
+                            return ''
+                        }
                         if (typeof val === 'string') {
                             if (val !== '') {
                                 return `${key}="${val}"`
@@ -479,7 +485,7 @@ export class Faple {
                     str += '/>'
                 } else {
                     str += '>'
-                    if(vnodeElement.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes)){
+                    if (vnodeElement.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes)) {
                         console.log(vnode)
                     }
                     if (vnodeElement.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes) && !(KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC in vnodeElement.attributes)) {
