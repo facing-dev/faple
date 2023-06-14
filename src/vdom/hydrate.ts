@@ -1,3 +1,5 @@
+
+
 export function isValidNode(node: Node): node is (HTMLElement | Text) {
     if (isElementNode(node) || isTextNode(node) || isHydrateHolderNode(node)) {
         return true

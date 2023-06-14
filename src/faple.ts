@@ -5,14 +5,9 @@ import Logger from './logger'
 import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
 import { VoidElementTags } from './vdom/def'
-import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_FAPLE_ID } from './constant'
-// function isFakeVNodeInstanceReference(vnode: VNodeInstanceReference) {
-//     if (!vnode.vNodeInstanceRoot.previousVNodeInstanceReference) {
-//         Logger.error('previousVNodeInstanceReference is undefined')
-//         throw ''
-//     }
-//     return vnode.vNodeInstanceRoot.previousVNodeInstanceReference !== vnode
-// }
+import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC, KEY_FAPLE_ID } from './constant'
+
+
 
 function couldReuse(oldVNode: VNode, newVNode: VNode) {
 
@@ -97,7 +92,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         if (vnode.listeners) {
 
             for (const key in vnode.listeners) {
-                
+
                 const event = vnode.listeners[key]
 
                 el.addEventListener(key, event as any)
@@ -276,7 +271,7 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
                         } else {
 
                             continue
-                            
+
                         }
                     } else {
                         oldVNode.node!.addEventListener(key, newVNode.listeners[key] as any)
@@ -354,7 +349,13 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
 })
 export class Faple {
     components: Map<string, Component> = new Map
-    constructor() {
+    scopeEl: HTMLElement
+    constructor(scopeEl?: HTMLElement) {
+
+        this.scopeEl = scopeEl ?? document.body
+        const els = this.scopeEl.querySelectorAll(`[${KEY_ATTRIBUTE_HYDRATE_IGNORE}][${KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC}]`)
+        els.forEach(e => e.innerHTML = '')
+        console.log('els', els)
         this.scheduler = new Scheduler(this)
     }
     scheduler: Scheduler
@@ -434,6 +435,13 @@ export class Faple {
                 return vnode.text
             }
             if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
+                if (vnode.type === 'INSTANCE_ROOT') {
+                    const vn = vnode.instance.$$__slot.vNode
+                    if (!vn) {
+                        throw ''
+                    }
+                    vnode = vn
+                }
                 let str = `<${vnode.tag}`
                 if (vnode.classes) {
                     str += ` class="${vnode.classes}"`
@@ -442,8 +450,9 @@ export class Faple {
                     str += ` style="${vnode.styles}"`
                 }
                 if (vnode.attributes) {
+                    const vn = vnode
                     str += ' ' + Object.keys(vnode.attributes).map(key => {
-                        const val = vnode.attributes![key]
+                        const val = vn.attributes![key]
                         if (typeof val === 'string') {
                             if (val !== '') {
                                 return `${key}="${val}"`
@@ -459,8 +468,7 @@ export class Faple {
                     str += '/>'
                 } else {
                     str += '>'
-                    if (vnode.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnode.attributes)) {
-                        // str += vnode.node?.innerHTML ?? ''
+                    if (vnode.attributes && (KEY_ATTRIBUTE_HYDRATE_IGNORE in vnode.attributes) && !(KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC in vnode.attributes)) {
                     }
                     else if (vnode.children) {
                         for (const child of vnode.children) {
@@ -482,6 +490,7 @@ export class Faple {
         return new Promise<string>((res) => {
             this.waitComponentsMounted(() => {
                 const vNode = comp.__slot.vNode!
+                console.log('vvv', vNode)
                 opt?.vnodeModifier?.(vNode)
                 res(vNodeTree2String(vNode))
             })
