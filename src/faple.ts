@@ -486,7 +486,9 @@ export class Faple {
                     str += '/>'
                 } else {
                     str += '>'
-
+                    if (vnodeElement.rawHtml) {
+                        str += vnodeElement.rawHtml
+                    }
                     if (!vnodeElement.attributes || !(KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes) || ((KEY_ATTRIBUTE_HYDRATE_IGNORE in vnodeElement.attributes) && KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC in vnodeElement.attributes)) {
                         if (vnodeElement.children) {
                             for (const child of vnodeElement.children) {
