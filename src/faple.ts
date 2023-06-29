@@ -58,7 +58,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             }
         }
         if (mis) {
-            Logger.error('Hydrate mismatched', vnode, hydrate, node)
+            Logger.error('Hydrate mismatched text', vnode, hydrate, node)
         }
         vnode.node = node
         return node
@@ -68,21 +68,25 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
         let el: HTMLElement | null = null
         if (hydrate === false || Hydrate.isTextNode(hydrate)) {
             if (hydrate !== false) {
-
                 mis = true
             }
             el = document.createElement(vnodeElement.tag)
 
 
         } else {
-            if (hydrate.tagName.toLowerCase() === vnodeElement.tag.toLowerCase() && !Object.getOwnPropertyDescriptor(hydrate, KEY_FAPLE_ID)) {
-                el = hydrate
+            if (hydrate.tagName.toLowerCase() === vnodeElement.tag.toLowerCase()) {
+                if(Object.getOwnPropertyDescriptor(hydrate, KEY_FAPLE_ID)){
+                    el = document.createElement(vnodeElement.tag)
+                }else{
+                    el = hydrate
+                }
             } else {
                 mis = true
                 el = document.createElement(vnodeElement.tag)
             }
         }
         if (mis) {
+
             Logger.error('Hydrate mismatched', vnode, hydrate, el)
         }
         if (vnodeElement.attributes) {
@@ -396,10 +400,6 @@ export class Faple {
         if (!(el instanceof HTMLElement)) {
             throw '1'
         }
-        if (reuseEl && el !== reuseEl) {
-            console.error(el)
-            throw '2'
-        }
         this.scheduler.scheduleMounted(() => {
             const ret = comp.mounted()
             if (ret) {
@@ -514,7 +514,6 @@ export class Faple {
         return new Promise<string>((res) => {
             this.waitComponentsMounted(() => {
                 const vNode = comp.__slot.vNode!
-                console.log('vvv', vNode)
                 opt?.vnodeModifier?.(vNode)
                 res(vNodeTree2String(vNode))
             })
