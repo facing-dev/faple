@@ -1,6 +1,6 @@
 import recursiveFree from 'recursive-free'
-import { VNode, VNodeInstanceRoot, VNodeElement } from './vdom/vnode'
-import { Component } from './component/component'
+import type { VNode, VNodeInstanceRoot, VNodeElement } from './vdom/vnode'
+import { Component,type ComponentConstructor } from './component/component'
 import Logger from './logger'
 import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
@@ -63,7 +63,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: Node | false }, HTMLEleme
             }
         }
         if (mis) {
-            Logger.error('Hydrate mismatched text', vnode, hydrate, node)
+            Logger.warn('Hydrate mismatched text', vnode, hydrate, node)
         }
         vnode.node = node
         return node
@@ -92,7 +92,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: Node | false }, HTMLEleme
         }
         if (mis) {
 
-            Logger.error('Hydrate mismatched', vnode, hydrate, el)
+            Logger.warn('Hydrate mismatched', vnode, hydrate, el)
         }
         if (vnodeElement.attributes) {
             for (const key in vnodeElement.attributes) {
@@ -389,8 +389,16 @@ export class Faple {
             cb()
         })
     }
-    initComponent<COMP extends Component>(comp: COMP, reuseEl?: HTMLElement) {
-        components.set(comp.$$slot.id, comp)
+    instantiateComponent<CONS extends ComponentConstructor>(cons: CONS, reuseEl?: HTMLElement):InstanceType<CONS>{
+        return new cons(this)
+    }
+
+    initComponent<T extends Component>(comp: T, reuseEl?: HTMLElement):T {
+        const id =comp.$$slot.id 
+        if(components.has(id)){
+            throw 'component has been inited'
+        }
+        components.set(id, comp)
         comp.$$slot.beforeMount()
 
         comp.$$slot.hEffect.effect.run()
@@ -448,6 +456,7 @@ export class Faple {
         opt.style ??= true
         opt.class ??= true
         const vNodeTree2String = recursiveFree<VNode, string>(function* (vnode: VNode) {
+
             if (vnode.type === 'TEXT') {
                 return vnode.text
             }

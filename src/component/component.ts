@@ -225,8 +225,13 @@ export abstract class Component {
     $reactive<T extends object>(obj: T) {
         return Observer.reactive(obj)
     }
-    $watchDeep(obj: any, fn: WatchDeepFunction) {
-        this.$$slot.watchDeep(obj, fn)
+    $watchDeep(obj: any, fn: WatchDeepFunction, opt?: {
+        /**
+         * default false
+         */
+        immediate?: boolean
+    }) {
+        this.$$slot.watchDeep(obj, fn, opt)
     }
 
     get $el() {
@@ -240,4 +245,5 @@ export abstract class Component {
     beforeDestroy() { }
     $preventScheduleRender = false
 }
-export type ComponentConstructor<T extends Component = any> = { new(): T }
+export type ComponentConstructor<T extends Component = any> = { new(...args: ConstructorParameters<typeof Component>): T }
+

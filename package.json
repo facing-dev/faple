@@ -2,8 +2,20 @@
   "name": "@facing/faple",
   "version": "1.0.1",
   "description": "",
+  "type": "module",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
+  "exports":{
+    ".":{
+      "import":"./dist/esm/index.js",
+      "require":"./dist/cjs/index.js"
+    },
+    "./jsx-runtime":{
+      "import":"./dist/esm/vdom/jsx-runtime.js",
+      "require":"./dist/cjs/vdom/jsx-runtime.js"
+    }
+  },
+  "types":"./dist/esm/index.d.ts",
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm",
     "watch": "npm run watch:esm",
