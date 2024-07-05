@@ -184,15 +184,15 @@ export abstract class Component {
     get $$slot() {
         const slot = Meta.getOwn(this)?.slot
         if (!slot) {
-            throw ''
+            throw 'no slot'
         }
         return slot
     }
 
     get $$prototypeSlot() {
-        const slot = PrototypeMeta.getOwn(this)?.slot
+        const slot = PrototypeMeta.get(this)?.slot
         if (!slot) {
-            throw ''
+            throw 'no prototype slot'
         }
         return slot
     }

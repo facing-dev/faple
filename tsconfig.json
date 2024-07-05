@@ -1,4 +1,7 @@
 {
+  "compilerOptions": {
+    "moduleResolution": "Bundler"
+  },
   "extends": [
     "./tsconfig/tsconfig.json"
   ]
