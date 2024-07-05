@@ -1,25 +1,20 @@
 import type { Component } from '../component/component'
 import type { VNodeElement } from '../vdom/vnode'
+import { Metadata } from 'facing-metadata'
 export class PrototypeSlot {
     renderer?: () => VNodeElement
     reactiveKeys?: Set<string>
     watchKeys?: Set<string>
     bindKeys?: Set<string>
 }
-
+export const PrototypeMeta = new Metadata<{ slot: PrototypeSlot }>(Symbol('faple-component-prototype'))
 export function initPrototypeSlot(proto: Component) {
-
-    const desc = Object.getOwnPropertyDescriptor(proto, '__prototypeSlot_')
-    if (desc) {
-        return desc.value as PrototypeSlot
+    let prototypeSlot = PrototypeMeta.getOwn(proto)?.slot
+    if (prototypeSlot) {
+        return prototypeSlot
     }
-    const prototypeSlot = new PrototypeSlot
-
-    Object.defineProperty(proto, '__prototypeSlot_', {
-        value: prototypeSlot,
-        enumerable: false,
-        configurable: false,
-        writable: false
-    })
+    prototypeSlot = new PrototypeSlot
+    PrototypeMeta.create(proto, { slot: prototypeSlot })
     return prototypeSlot
 }
+

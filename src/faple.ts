@@ -1,15 +1,20 @@
 import recursiveFree from 'recursive-free'
-import { VNode, VNodeInstanceReference, VNodeInstanceRoot, VNodeElement } from './vdom/vnode'
+import { VNode, VNodeInstanceRoot, VNodeElement } from './vdom/vnode'
 import { Component } from './component/component'
 import Logger from './logger'
 import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
 import { VoidElementTags } from './vdom/def'
-import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC_HTML, KEY_FAPLE_ID } from './constant'
-
-
-
-
+import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC_HTML } from './constant'
+const components: Map<string, Component> = new Map
+const elementIDs: WeakMap<HTMLElement, string> = new WeakMap
+function getComponentByElement(el: HTMLElement) {
+    const id = elementIDs.get(el)
+    if (id === undefined) {
+        return
+    }
+    return components.get(id)
+}
 function couldReuse(oldVNode: VNode, newVNode: VNode) {
 
     if (oldVNode.type !== newVNode.type) {
@@ -37,7 +42,7 @@ function couldReuse(oldVNode: VNode, newVNode: VNode) {
     return true
 }
 
-const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | false }, HTMLElement | Text>(function* (opt) {
+const initDom = recursiveFree<{ vnode: VNode, hydrate: Node | false }, HTMLElement | Text>(function* (opt) {
 
     const vnode = opt.vnode
     const hydrate = opt.hydrate
@@ -66,7 +71,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
     if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
         const vnodeElement = vnode.type === 'ELEMENT' ? vnode : vnode.elVNode
         let el: HTMLElement | null = null
-        if (hydrate === false || Hydrate.isTextNode(hydrate)) {
+        if (hydrate === false || !Hydrate.isElementNode(hydrate)) {
             if (hydrate !== false) {
                 mis = true
             }
@@ -75,9 +80,9 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
 
         } else {
             if (hydrate.tagName.toLowerCase() === vnodeElement.tag.toLowerCase()) {
-                if(Object.getOwnPropertyDescriptor(hydrate, KEY_FAPLE_ID)){
+                if (getComponentByElement(hydrate)) {
                     el = document.createElement(vnodeElement.tag)
-                }else{
+                } else {
                     el = hydrate
                 }
             } else {
@@ -114,7 +119,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             el.innerHTML = vnodeElement.rawHtml
         }
         else if (vnodeElement.children) {
-            let hydrateNodes: ReturnType<typeof Hydrate.getValideChildren> | null = null
+            let hydrateNodes: (Node | typeof Hydrate.HydrateHolder)[] | null = null
 
             // let mismatched = false
 
@@ -122,12 +127,12 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
 
 
                 const child: VNode = vnodeElement.children[i]
-                let hydrateOpt: Comment | typeof hydrate = false
+                let hydrateOpt: typeof Hydrate.HydrateHolder | typeof hydrate = false
                 if (hydrate) {
                     if (mis) {
                         hydrateOpt = false
                     } else {
-                        hydrateNodes ??= Hydrate.getValideChildren(el)
+                        hydrateNodes ??= Array.from(el.childNodes.values())
 
                         hydrateOpt = hydrateNodes[hydi] ?? false
 
@@ -135,14 +140,14 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
                             throw ''
                         }
 
-                        while (hydrateOpt && Hydrate.isElementNode(hydrateOpt) && hydrateOpt.getAttribute(KEY_ATTRIBUTE_HYDRATE_IGNORE)) {
+                        while (hydrateOpt && hydrateOpt !== Hydrate.HydrateHolder && Hydrate.isElementNode(hydrateOpt) && hydrateOpt.hasAttribute(KEY_ATTRIBUTE_HYDRATE_IGNORE)) {
                             hydrateOpt.remove()
                             hydi++
                             hydrateOpt = hydrateNodes[hydi] ?? false
                         }
 
-                        if (child.type !== 'TEXT' && hydrateOpt) {
-                            while (hydrateOpt && Hydrate.isTextNode(hydrateOpt)) {
+                        if (hydrateOpt && hydrateOpt !== Hydrate.HydrateHolder && child.type !== 'TEXT') {
+                            while (hydrateOpt && hydrateOpt !== Hydrate.HydrateHolder && Hydrate.isTextNode(hydrateOpt)) {
 
                                 hydrateOpt.remove()
                                 hydi++
@@ -150,7 +155,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
 
                             }
                         }
-                        if (Hydrate.isHydrateHolderNode(hydrateOpt)) {
+                        if (hydrateOpt === Hydrate.HydrateHolder) {
                             hydrateOpt = false
                         }
                     }
@@ -167,7 +172,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
                             if (ind === false || ind === -1) {
                                 throw 'hydrate e 1'
                             }
-                            hydrateNodes![ind] = document.createComment('hydrate replace holder')
+                            hydrateNodes![ind] = Hydrate.HydrateHolder
 
 
                         }
@@ -184,10 +189,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: HTMLElement | Text | fals
             vnode.ref.value = el
         }
         if (vnode.type === 'INSTANCE_ROOT') {
-            Object.defineProperty(vnodeElement.node, KEY_FAPLE_ID, {
-                value: vnode.instance.$$__slot.id,
-                enumerable: false
-            })
+            elementIDs.set(vnodeElement.node, vnode.instance.$$slot.id)
         }
 
         return el
@@ -213,9 +215,6 @@ function removeDom(vNode: VNode) {
         Logger.error('Can not remove an instance root\'s dom')
         throw ''
     } else if (vNode.type === 'INSTANCE_REFERENCE') {
-        // if (vNode.isFake===true) {
-        //     return
-        // }
         vNode.vNodeInstanceRoot.elVNode.node!.remove()
     } else {
         vNode.node!.remove()
@@ -370,7 +369,7 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
     throw '6'
 })
 export class Faple {
-    components: Map<string, Component> = new Map
+
     scopeEl: HTMLElement
     constructor(scopeEl?: HTMLElement) {
 
@@ -391,12 +390,12 @@ export class Faple {
         })
     }
     initComponent<COMP extends Component>(comp: COMP, reuseEl?: HTMLElement) {
-        this.components.set(comp.$$__slot.id, comp)
-        comp.__slot.beforeMount()
+        components.set(comp.$$slot.id, comp)
+        comp.$$slot.beforeMount()
 
-        comp.__slot.hEffect.effect.run()
+        comp.$$slot.hEffect.effect.run()
 
-        const el = initDom({ vnode: comp.__slot.vNode!, hydrate: reuseEl ?? false })
+        const el = initDom({ vnode: comp.$$slot.vNode!, hydrate: reuseEl ?? false })
         if (!(el instanceof HTMLElement)) {
             throw '1'
         }
@@ -406,12 +405,12 @@ export class Faple {
                 this.mountedPromises ??= []
                 this.mountedPromises?.push(ret)
             }
-            comp.__slot.afterMounted()
+            comp.$$slot.afterMounted()
         })
         return comp
     }
     updateComponent(comp: Component) {
-        const slot = comp.__slot
+        const slot = comp.$$slot
         slot.hEffect.effect.run()
         if (!slot.vNodeElOld) {
             throw 'vNodeOld is undefined'
@@ -422,16 +421,12 @@ export class Faple {
      * not recursive
      */
     releaseComponent(comp: Component) {
-        this.components.delete(comp.$$__slot.id)
+        components.delete(comp.$$slot.id)
         comp.beforeDestroy()
-        comp.__slot.destroy()
+        comp.$$slot.destroy()
     }
     getComponentByElement(el: HTMLElement): any {
-        const id = Object.getOwnPropertyDescriptor(el, KEY_FAPLE_ID)?.value ?? undefined
-        if (!id) {
-            return undefined
-        }
-        return this.components.get(id)
+        return getComponentByElement(el)
     }
     // mount(component: Component, useRootEl?: boolean) {
     //     const comp = this.initComponent(component, useRootEl ? this.root : undefined)
@@ -513,7 +508,7 @@ export class Faple {
 
         return new Promise<string>((res) => {
             this.waitComponentsMounted(() => {
-                const vNode = comp.__slot.vNode!
+                const vNode = comp.$$slot.vNode!
                 opt?.vnodeModifier?.(vNode)
                 res(vNodeTree2String(vNode))
             })

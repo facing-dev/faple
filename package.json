@@ -2,12 +2,20 @@
   "name": "@facing/faple",
   "version": "1.0.1",
   "description": "",
-  "main": "dist/index.js",
-  "scripts": {},
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm",
+    "watch": "npm run watch:esm",
+    "watch:cjs": "./node_modules/.bin/tsc --project ./tsconfig/tsconfig.cjs.json --watch",
+    "watch:esm": "./node_modules/.bin/tsc --project ./tsconfig/tsconfig.esm.json --watch",
+    "build:cjs": "./node_modules/.bin/tsc --project ./tsconfig/tsconfig.cjs.json",
+    "build:esm": "./node_modules/.bin/tsc --project ./tsconfig/tsconfig.esm.json"
+  },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^4.8.4"
+    "typescript": "^5.0.0"
   },
   "dependencies": {
     "@facing/logger": "^0.2.6",
@@ -15,6 +23,7 @@
     "@types/lodash-es": "^4.17.7",
     "@types/uuid": "^9.0.1",
     "@vue/reactivity": "^3.2.47",
+    "facing-metadata": "^2.0.0",
     "lodash-es": "^4.17.21",
     "recursive-free": "^1.0.3",
     "uuid": "^9.0.0"

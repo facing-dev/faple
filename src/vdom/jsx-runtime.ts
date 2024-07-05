@@ -1,39 +1,37 @@
-import recursiveFree from 'recursive-free'
 import { flatten } from 'lodash-es'
 import Logger from '../logger'
-import type { VNode, VNodeElement, VNodeInstanceReference, VNodeText } from './vnode'
+import { VNode, VNodeElement, VNodeInstanceReference, VNodeText, makeVNode, isVNode } from './vnode'
 import { Component } from '../component/component'
 import { VoidElementTags } from './def'
-type ChildT = VNodeElement | Component | string | number | boolean | undefined | null
+type ChildT = VNodeElement | Component | string | number | boolean | Object | Array<any> | undefined | null
 export type Child = ChildT | Array<ChildT>
-const parseChild = recursiveFree<Child, VNode | Array<VNode>>(function* (child) {
-    if (Array.isArray(child)) {
-        const childArr: Array<VNode> = []
-        for (const c of child) {
-            childArr.push((yield c) as VNode)
-        }
-        return childArr
-    }
+const parseChild = function (child: ChildT): VNode {
     if (typeof child === 'object' && child !== null) {
-
         if (child instanceof Component) {
-            const slot = child.__slot
+            const slot = child.$$slot
             if (!slot.vNode) {
                 Logger.error('Child component vNode is undefined')
                 throw ''
             }
             const vNode = slot.vNode
-            const newVNode: VNodeInstanceReference = {
+            const newVNode: VNodeInstanceReference = makeVNode({
                 type: 'INSTANCE_REFERENCE',
                 vNodeInstanceRoot: vNode,
-                isFake: false
-            }
+                isFake: false,
+            })
             vNode.previousVNodeInstanceReference = vNode.currentVNodeInstanceReference
             vNode.currentVNodeInstanceReference = newVNode
             return newVNode
-        } else {
+        }
+        if (isVNode(child)) {
             return child
         }
+
+        return makeVNode({
+            type: 'TEXT',
+            text: JSON.stringify(child)
+        })
+
     }
 
     if (typeof child === 'string') {
@@ -69,24 +67,24 @@ const parseChild = recursiveFree<Child, VNode | Array<VNode>>(function* (child) 
     if (child === null) {
         return {
             type: 'TEXT',
-            text: ''
+            text: 'null'
         }
     }
 
     Logger.error('Can not parse child', child)
     throw ''
-})
+}
 
 export function jsx(tag: string, props: {
     [index: string]: any
     children?: Child
 }, key?: any): VNodeElement {
     tag = tag.toLowerCase()
-    const VNode: VNodeElement = {
+    const VNode: VNodeElement = makeVNode({
         type: 'ELEMENT',
         tag,
         key: key
-    }
+    })
 
     for (const propKey in props) {
         const prop = props[propKey]
@@ -100,15 +98,9 @@ export function jsx(tag: string, props: {
             VNode.listeners[eventName] = prop
             continue
         }
-        if (propKey === 'children') {
-            const children = props.children
-            const c = parseChild(children)
-            if (Array.isArray(c)) {
-                VNode.children = flatten(c)
-            }
-            else {
-                VNode.children = [c]
-            }
+        if (propKey === 'children' && props.children !== undefined) {
+            const children: Array<ChildT> = Array.isArray(props.children) ? flatten(props.children) : [props.children]
+            VNode.children = children.map(child => parseChild(child))
             if (VNode.children && VNode.children.length > 0 && VoidElementTags.has(VNode.tag)) {
                 Logger.error('VNode.children.size > 0 in an empty tag', VNode)
                 throw ''
@@ -137,7 +129,6 @@ export function jsx(tag: string, props: {
             continue
         }
         if (propKey === 'class') {
-            // VNode.classesRaw = prop
             if (typeof prop === 'string') {
                 VNode.classes = prop
             }
@@ -194,7 +185,7 @@ export function jsx(tag: string, props: {
             continue
         }
         if (parsedProp === null) {
-            Logger.error('Not supported property', prop)
+            Logger.error('Not supported attribute', prop)
             throw ''
         }
 

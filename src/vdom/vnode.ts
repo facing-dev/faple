@@ -8,8 +8,10 @@ export function createReference<T>(init?: T): Reference<T> {
         value: typeof init === 'undefined' ? null : init
     }
 }
+const SymbolVNode = Symbol('faple-vnode')
 interface VNodeBase {
     type: VNodeType
+
 }
 
 interface WithKey {
@@ -32,6 +34,20 @@ interface VNodeEntity extends VNodeBase {
     rawHtml?: string
 }
 
+export function makeVNode<T extends VNode>(vNode: T):T {
+    Object.defineProperty(vNode, SymbolVNode, {
+        value: true,
+        enumerable: false,
+        configurable: false,
+        writable: false
+    })
+    return vNode
+}
+
+export function isVNode<T extends VNode = VNode>(vNode: any): vNode is VNode {
+    return typeof vNode === 'object' && vNode !== null && Object.getOwnPropertyDescriptor(vNode, SymbolVNode)?.value === true
+}
+
 export interface VNodeElement extends VNodeEntity, WithKey, WithNode<HTMLElement> {
     type: 'ELEMENT'
     ref?: Reference<any>
@@ -42,7 +58,7 @@ export interface VNodeInstanceRoot extends VNodeBase, WithKey {
     instance: Component
     previousVNodeInstanceReference?: VNodeInstanceReference
     currentVNodeInstanceReference?: VNodeInstanceReference
-    elVNode:VNodeElement
+    elVNode: VNodeElement
 }
 
 export interface VNodeInstanceReference extends VNodeBase {

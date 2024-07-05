@@ -1,10 +1,15 @@
 import { v4 as uuidV4 } from 'uuid'
-import type { VNodeInstanceRoot, VNodeElement } from '../vdom/vnode'
+import { VNodeInstanceRoot, VNodeElement, makeVNode } from '../vdom/vnode'
 import type { Faple } from '../faple'
-import { PrototypeSlot } from '../decorator/propertySlot'
 import Logger from '../logger'
 import * as Observer from '@vue/reactivity'
 import recursiveFree from 'recursive-free'
+import { Metadata } from 'facing-metadata'
+import { PrototypeMeta } from '../decorator/propertySlot'
+const Meta = new Metadata<{
+    slot: Slot
+}>(Symbol('faple-component'))
+
 interface WatchDeepFunction {
     (): void
 }
@@ -43,7 +48,6 @@ class Slot {
             lazy: true,
             scheduler: () => {
                 this.scheduleRender()
-                // this.faple!.scheduler.scheduleRender(() => this.renderSync(), this.instance)
             }
         })
 
@@ -57,55 +61,35 @@ class Slot {
     hEffect: Observer.ReactiveEffectRunner
     watchEffects?: Observer.ReactiveEffectRunner[]
     h() {
-
-        const prototypeSlot = this.instance.__prototypeSlot
+        const prototypeSlot = this.instance.$$prototypeSlot
         if (!prototypeSlot.renderer) {
             Logger.error('slot.renderer is undefined')
             throw ''
         }
         const renderer = prototypeSlot.renderer
-
         const vNodeElement = renderer.apply(this.instance)
-
         if (!vNodeElement) {
             throw ''
         }
-
-
-        if (!this.vNode) {
-            this.vNode = {
-                instance: this.instance,
-                type: 'INSTANCE_ROOT',
-                previousVNodeInstanceReference: undefined,
-                currentVNodeInstanceReference: undefined,
-                elVNode: vNodeElement
-            }
-        }else{
-            this.vNode.elVNode=vNodeElement
-        }
-        // const vNode = this.vNode ??= {
-        //     instance: this.instance,
-        //     type: 'INSTANCE_ROOT',
-        //     previousVNodeInstanceReference: previousVNodeInstanceReference,
-        //     currentVNodeInstanceReference: currentVNodeInstanceReference,
-        //     elVNode: vNodeElement
-        // }
-
-        // const vNode: VNodeInstanceRoot = 
+        this.vNode ??= makeVNode({
+            type: 'INSTANCE_ROOT',
+            instance: this.instance,
+            previousVNodeInstanceReference: undefined,
+            currentVNodeInstanceReference: undefined,
+            elVNode: vNodeElement
+        })
+        this.vNode.elVNode = vNodeElement
         this.instance.beforeRender(this.vNode.elVNode)
-
         this.vNodeElOld = this.vNodeEl
         this.vNodeEl = vNodeElement
     }
     renderSync() {
-        this.faple!.updateComponent(this.instance)
+        this.faple.updateComponent(this.instance)
     }
     scheduleRender(cb?: (opt: boolean) => void) {
         if (this.instance.$preventScheduleRender) {
-            if (cb) {
-                cb(false)
-            }
-            return
+            cb?.(false)
+            return false
         }
         this.faple!.scheduler.scheduleRender(() => {
             this.renderSync()
@@ -113,69 +97,77 @@ class Slot {
         }, this.instance)
         return true
     }
-    render<T extends boolean | undefined>(shouldReturnPromise?: T): [T] extends [true] ? Promise<boolean> : void {
-        if (!this.faple) {
-            throw 'slot.faple is undefined'
-        }
+
+    render(shouldReturnPromise: true): Promise<boolean>
+    render(shouldReturnPromise?: false): boolean
+    render(shouldReturnPromise?: boolean): Promise<boolean> | boolean {
         const work = (cb?: (opt: boolean) => void) => {
-            this.scheduleRender(cb)
+            return this.scheduleRender(cb)
         }
         if (shouldReturnPromise) {
             return new Promise<boolean>((res) => {
                 work((opt) => res(opt))
-            }) as any
+            })
         } else {
-            work()
+            return work()
         }
-        return undefined as any
     }
     beforeMount() {
         const ins = this.instance
-        Observer.markRaw(ins)
         const insAny = ins as any
-        const bindKeys = ins.__prototypeSlot.bindKeys
-
+        const bindKeys = ins.$$prototypeSlot.bindKeys
         if (bindKeys && bindKeys.size > 0) {
-
             for (const key of bindKeys.values()) {
-
                 insAny[key] = insAny[key].bind(ins)
             }
         }
-        const reactiveKeys = ins.__prototypeSlot.reactiveKeys
+        const reactiveKeys = ins.$$prototypeSlot.reactiveKeys
         if (reactiveKeys && reactiveKeys.size > 0) {
             for (const key of reactiveKeys.values()) {
                 const proxied = Observer.reactive((insAny[key]));
                 insAny[key] = proxied
             }
         }
-        const watchKeys = ins.__prototypeSlot.watchKeys
-        if (watchKeys && watchKeys.size > 0) {
-            for (const key of watchKeys.values()) {
-                this.watchEffects ??= []
-                this.watchEffects.push(Observer.effect(() => {
-                    insAny[key]()
-                }, {
-                    lazy: true
-                }))
-            }
-        }
+        // const watchKeys = ins.$$prototypeSlot.watchKeys
+        // if (watchKeys && watchKeys.size > 0) {
+        //     for (const key of watchKeys.values()) {
+        //         this.watchEffects ??= []
+        //         this.watchEffects.push(Observer.effect(() => {
+        //             insAny[key]()
+        //         }, {
+        //             lazy: true
+        //         }))
+        //     }
+        // }
     }
+    isAfterMounted = false
     afterMounted() {
         this.watchEffects?.forEach(e => {
             e.effect.run()
         })
+        this.isAfterMounted = true
     }
-    watchDeep(obj: any, fn: WatchDeepFunction) {
-        let first = true
+    watchDeep(obj: any, fn: WatchDeepFunction, opt?: {
+        /**
+         * default false
+         */
+        immediate?: boolean
+    }) {
+        const immediate = opt?.immediate ?? false
+        let runCount = 0
         this.watchEffects ??= []
-
         this.watchEffects.push(Observer.effect(() => {
+            runCount++
             watchDeepTraverse({ value: obj })
-            if (!first) {
-                fn()
+            if (runCount === 1) {//call in afterMounted or immediately
+                if (immediate) {
+                    fn()
+                }
+                return
             }
-            first = false
+            fn()
+        }, {
+            lazy: this.isAfterMounted ? false : true
         }))
     }
     destroy() {
@@ -189,46 +181,56 @@ class Slot {
 
 
 export abstract class Component {
-    $$__slot!: Slot
-    get __slot() {
-        return this.$$__slot
+    get $$slot() {
+        const slot = Meta.getOwn(this)?.slot
+        if (!slot) {
+            throw ''
+        }
+        return slot
     }
-    private __prototypeSlot_!: PrototypeSlot
-    get __prototypeSlot() {
-        return this.__prototypeSlot_
+
+    get $$prototypeSlot() {
+        const slot = PrototypeMeta.getOwn(this)?.slot
+        if (!slot) {
+            throw ''
+        }
+        return slot
     }
     constructor(faple: Faple) {
-        Object.defineProperty(this, '$$__slot', {
-            value: new Slot(this, faple),
-            enumerable: false,
-            configurable: false,
-            writable: false
+        Meta.create(this, {
+            slot: new Slot(this, faple)
         })
     }
-    $render<T extends boolean | undefined>(shouldReturnPromise?: T): [T] extends [true] ? Promise<boolean> : void {
-        return this.__slot.render(shouldReturnPromise)
+
+    $render(shouldReturnPromise: true): Promise<boolean>
+    $render(shouldReturnPromise?: false): boolean
+    $render(shouldReturnPromise?: boolean): Promise<boolean> | boolean {
+        if (shouldReturnPromise) {
+            return this.$$slot.render(shouldReturnPromise)
+        }
+        return this.$$slot.render(shouldReturnPromise)
     }
     $renderSync() {
-        this.__slot.renderSync()
+        this.$$slot.renderSync()
     }
     $nextTick(cb: Function, uniqueId?: string) {
-        this.__slot.faple!.scheduler.scheduleNextTick(cb)
+        this.$$slot.faple.scheduler.scheduleNextTick(cb)
     }
     $nextTickLowPriority(cb: Function, uniqueId?: string) {
-        this.__slot.faple!.scheduler.scheduleLowPriority(cb)
+        this.$$slot.faple.scheduler.scheduleLowPriority(cb)
     }
     $release() {
-        this.__slot.faple!.releaseComponent(this)
+        this.$$slot.faple.releaseComponent(this)
     }
     $reactive<T extends object>(obj: T) {
         return Observer.reactive(obj)
     }
     $watchDeep(obj: any, fn: WatchDeepFunction) {
-        this.__slot.watchDeep(obj, fn)
+        this.$$slot.watchDeep(obj, fn)
     }
 
     get $el() {
-        return this.$$__slot.vNode?.elVNode.node
+        return this.$$slot.vNode?.elVNode.node
     }
     mounted(): void | Promise<any> {
 
