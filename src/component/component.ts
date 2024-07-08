@@ -179,8 +179,10 @@ class Slot {
     }
 }
 
-
-export abstract class Component {
+export abstract class Component<Props extends Record<string, any> = Record<string, any>> {
+    properties!: Props & {
+        key?: any
+    }
     get $$slot() {
         const slot = Meta.getOwn(this)?.slot
         if (!slot) {
@@ -245,5 +247,5 @@ export abstract class Component {
     beforeDestroy() { }
     $preventScheduleRender = false
 }
-export type ComponentConstructor<T extends Component = any> = { new(...args: ConstructorParameters<typeof Component>): T }
+export type ComponentConstructor<T extends Component = Component> = { new(...args: ConstructorParameters<typeof Component>): T }
 

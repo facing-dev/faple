@@ -1,6 +1,6 @@
 import recursiveFree from 'recursive-free'
-import type { VNode, VNodeInstanceRoot, VNodeElement } from './vdom/vnode'
-import { Component,type ComponentConstructor } from './component/component'
+import type { VNode, VNodeInstanceRoot, VNodeElement, VNodeConstructor } from './vdom/vnode'
+import { Component, type ComponentConstructor } from './component/component'
 import Logger from './logger'
 import { Scheduler } from './scheduler'
 import * as Hydrate from './vdom/hydrate'
@@ -15,37 +15,13 @@ function getComponentByElement(el: HTMLElement) {
     }
     return components.get(id)
 }
-function couldReuse(oldVNode: VNode, newVNode: VNode) {
 
-    if (oldVNode.type !== newVNode.type) {
-        return false
-    }
-    if (oldVNode.type === 'ELEMENT' && newVNode.type === 'ELEMENT') {
-        if (oldVNode.tag !== newVNode.tag) {
-            return false
-        }
-        if (oldVNode.key !== newVNode.key) {
-            return false
-        }
-    }
-    if (oldVNode.type === 'INSTANCE_REFERENCE' && newVNode.type === 'INSTANCE_REFERENCE') {
-        if (oldVNode.vNodeInstanceRoot.instance !== newVNode.vNodeInstanceRoot.instance) {
-            return false
-        }
-    }
-    if (oldVNode.type === 'INSTANCE_ROOT' && newVNode.type === 'INSTANCE_ROOT') {
-        if (oldVNode.instance !== newVNode.instance) {
-            Logger.error('INSTANCE_ROOT vnode must have same instance in couldReuse()')
-            throw ''
-        }
-    }
-    return true
-}
 
-const initDom = recursiveFree<{ vnode: VNode, hydrate: Node | false }, HTMLElement | Text>(function* (opt) {
+const initDom = recursiveFree<{ vnode: VNode, hydrate: Node | false, faple: Faple }, HTMLElement | Text>(function* (opt) {
 
     const vnode = opt.vnode
     const hydrate = opt.hydrate
+    const faple = opt.faple
     let mis = false
     if (vnode.type === 'TEXT') {
         let node: Text | null = null
@@ -67,6 +43,14 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: Node | false }, HTMLEleme
         }
         vnode.node = node
         return node
+    }
+    if (vnode.type === 'CONSTRUCTOR') {
+        const ins = opt.faple.instantiateComponent(vnode.constructor)
+        ins.properties ??= {}
+        Object.assign(ins.properties, vnode.properties)
+        opt.faple.initComponent(ins, opt.hydrate && Hydrate.isElementNode(opt.hydrate) ? opt.hydrate : undefined)
+        vnode.instance = ins
+        return ins.$$slot.vNodeEl?.node!
     }
     if (vnode.type === 'ELEMENT' || vnode.type === 'INSTANCE_ROOT') {
         const vnodeElement = vnode.type === 'ELEMENT' ? vnode : vnode.elVNode
@@ -161,7 +145,7 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: Node | false }, HTMLEleme
                     }
                 }
 
-                const childEl: HTMLElement | Text = yield { vnode: child, hydrate: hydrateOpt }
+                const childEl: HTMLElement | Text = yield { vnode: child, hydrate: hydrateOpt, faple }
                 if (hydrate && mis === false && childEl === hydrateOpt) {
                     //hydrated
                 }
@@ -206,9 +190,34 @@ const initDom = recursiveFree<{ vnode: VNode, hydrate: Node | false }, HTMLEleme
         return vnode.vNodeInstanceRoot.elVNode.node
     }
 
+
     Logger.error('VNode not supported', vnode)
     throw ''
 })
+function release(vNode: VNodeInstanceRoot): void
+function release(vNode: VNodeConstructor): void
+function release(vNode: VNodeInstanceRoot | VNodeConstructor) {
+    if (vNode.type === 'INSTANCE_ROOT') {
+        const rec = recursiveFree<VNode, void>(function* (vNode) {
+            if (vNode.type === 'CONSTRUCTOR') {
+                release(vNode)
+            }
+            if (vNode.type !== 'INSTANCE_ROOT' && vNode.type !== 'ELEMENT') {
+                return
+            }
+            for (const n of (vNode.type === 'ELEMENT' ? vNode.children : vNode.elVNode.children) ?? []) {
+                yield n
+            }
+        })
+        rec(vNode)
+
+    }
+    const comp = vNode.instance!
+    components.delete(comp.$$slot.id)
+    comp.beforeDestroy()
+    comp.$$slot.destroy()
+}
+
 function removeDom(vNode: VNode) {
 
     if (vNode.type === 'INSTANCE_ROOT') {
@@ -216,13 +225,59 @@ function removeDom(vNode: VNode) {
         throw ''
     } else if (vNode.type === 'INSTANCE_REFERENCE') {
         vNode.vNodeInstanceRoot.elVNode.node!.remove()
+    } else if (vNode.type === 'CONSTRUCTOR') {
+        const el = vNode.instance?.$$slot.vNodeEl?.node
+        if (!el) {
+            throw ''
+        }
+        release(vNode)
+        el.remove()
+
+
     } else {
         vNode.node!.remove()
     }
 }
+function couldReuse(oldVNode: VNode, newVNode: VNode) {
 
-const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
-    const [oldVNode, newVNode] = args
+    if (oldVNode.type !== newVNode.type) {
+        return false
+    }
+    if (oldVNode.type === 'ELEMENT' && newVNode.type === 'ELEMENT') {
+        if (oldVNode.tag !== newVNode.tag) {
+            return false
+        }
+        if (oldVNode.key !== newVNode.key) {
+            return false
+        }
+    }
+    if (oldVNode.type === 'INSTANCE_REFERENCE' && newVNode.type === 'INSTANCE_REFERENCE') {
+        if (oldVNode.vNodeInstanceRoot.instance !== newVNode.vNodeInstanceRoot.instance) {
+            return false
+        }
+    }
+    if (oldVNode.type === 'INSTANCE_ROOT' && newVNode.type === 'INSTANCE_ROOT') {
+        if (oldVNode.instance !== newVNode.instance) {
+            Logger.error('INSTANCE_ROOT vnode must have same instance in couldReuse()')
+            throw ''
+        }
+        if (newVNode.elVNode.tag !== oldVNode.elVNode.tag) {
+            Logger.error('INSTANCE_ROOT vnode must have same element tag in couldReuse()')
+            throw ''
+        }
+    }
+    if (oldVNode.type === 'CONSTRUCTOR' && newVNode.type === 'CONSTRUCTOR') {
+        if (oldVNode.constructor !== newVNode.constructor) {
+            return false
+        }
+        if (oldVNode.key !== newVNode.key) {
+            return false
+        }
+    }
+    return true
+}
+const updateDom = recursiveFree<[VNode, VNode, Faple], void>(function* (args) {
+    const [oldVNode, newVNode, faple] = args
     if (!couldReuse(oldVNode, newVNode)) {
         return
     }
@@ -337,17 +392,24 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
                     }
                     const newChild = newVNodeElement.children[newInd]
                     if (couldReuse(oldChild, newChild)) {
-                        yield [oldChild, newChild]
+                        yield [oldChild, newChild, faple]
 
                     } else {
-                        const newNode = initDom({ vnode: newChild, hydrate: false })
-                        node.replaceChild(newNode, oldChild.type === 'INSTANCE_REFERENCE' ? oldChild.vNodeInstanceRoot.elVNode.node! : (oldChild.type === 'INSTANCE_ROOT' ? oldChild.elVNode.node! : oldChild.node!))
+                        if (oldChild.type === 'CONSTRUCTOR') {
+                            release(oldChild)
+                        }
+                        const newNode = initDom({ vnode: newChild, hydrate: false, faple })
+                        node.replaceChild(newNode,
+                            oldChild.type === 'INSTANCE_REFERENCE' ? oldChild.vNodeInstanceRoot.elVNode.node! :
+                                (oldChild.type === 'INSTANCE_ROOT' ? oldChild.elVNode.node! :
+                                    oldChild.type === 'CONSTRUCTOR' ? oldChild.instance!.$$slot.vNodeEl!.node! : oldChild.node!))
+
                     }
                 }
             }
             if (newVNodeElement.children) {
                 for (newInd++; newInd < newVNodeElement.children.length; newInd++) {
-                    const newNode = initDom({ vnode: newVNodeElement.children[newInd], hydrate: false })
+                    const newNode = initDom({ vnode: newVNodeElement.children[newInd], hydrate: false, faple })
                     node.appendChild(newNode)
                 }
             }
@@ -360,10 +422,26 @@ const updateDom = recursiveFree<[VNode, VNode], void>(function* (args) {
         if (oldVNode.text !== newVNode.text) {
             oldVNode.node!.textContent = newVNode.text
         }
-
         return
     }
     else if (oldVNode.type === 'INSTANCE_REFERENCE' && newVNode.type === 'INSTANCE_REFERENCE') {
+        return
+    }
+    else if (oldVNode.type === 'CONSTRUCTOR' && newVNode.type === 'CONSTRUCTOR') {
+        newVNode.instance = oldVNode.instance
+        const props = newVNode.instance!.properties ??= {}
+        for (const key in props) {
+            if (!(key in newVNode.properties)) {
+                delete props[key]
+            }
+        }
+        for (const key in newVNode.properties) {
+            if (props[key] !== newVNode.properties[key]) {
+                props[key] = newVNode.properties[key]
+            }
+        }
+        console.log(newVNode.properties.f)
+
         return
     }
     throw '6'
@@ -389,13 +467,13 @@ export class Faple {
             cb()
         })
     }
-    instantiateComponent<CONS extends ComponentConstructor>(cons: CONS, reuseEl?: HTMLElement):InstanceType<CONS>{
+    instantiateComponent<COMP extends Component>(cons: ComponentConstructor<COMP>): COMP {
         return new cons(this)
     }
 
-    initComponent<T extends Component>(comp: T, reuseEl?: HTMLElement):T {
-        const id =comp.$$slot.id 
-        if(components.has(id)){
+    initComponent<T extends Component>(comp: T, reuseEl?: HTMLElement): T {
+        const id = comp.$$slot.id
+        if (components.has(id)) {
             throw 'component has been inited'
         }
         components.set(id, comp)
@@ -403,7 +481,7 @@ export class Faple {
 
         comp.$$slot.hEffect.effect.run()
 
-        const el = initDom({ vnode: comp.$$slot.vNode!, hydrate: reuseEl ?? false })
+        const el = initDom({ vnode: comp.$$slot.vNode!, hydrate: reuseEl ?? false, faple: this })
         if (!(el instanceof HTMLElement)) {
             throw '1'
         }
@@ -423,15 +501,13 @@ export class Faple {
         if (!slot.vNodeElOld) {
             throw 'vNodeOld is undefined'
         }
-        updateDom([slot.vNodeElOld, slot.vNodeEl!])
+        updateDom([slot.vNodeElOld, slot.vNodeEl!, this])
     }
     /**
      * not recursive
      */
     releaseComponent(comp: Component) {
-        components.delete(comp.$$slot.id)
-        comp.beforeDestroy()
-        comp.$$slot.destroy()
+        release(comp.$$slot.vNode!)
     }
     getComponentByElement(el: HTMLElement): any {
         return getComponentByElement(el)

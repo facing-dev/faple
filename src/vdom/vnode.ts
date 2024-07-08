@@ -1,5 +1,6 @@
 import type { Component } from '../component/component'
-type VNodeType = 'ELEMENT' | 'TEXT' | 'INSTANCE_ROOT' | 'INSTANCE_REFERENCE'
+import type { ComponentConstructor } from '../component/component'
+type VNodeType = 'ELEMENT' | 'TEXT' | 'INSTANCE_ROOT' | 'INSTANCE_REFERENCE' | 'CONSTRUCTOR'
 export interface Reference<T> {
     value: T | null
 }
@@ -34,7 +35,7 @@ interface VNodeEntity extends VNodeBase {
     rawHtml?: string
 }
 
-export function makeVNode<T extends VNode>(vNode: T):T {
+export function makeVNode<T extends VNode>(vNode: T): T {
     Object.defineProperty(vNode, SymbolVNode, {
         value: true,
         enumerable: false,
@@ -44,7 +45,7 @@ export function makeVNode<T extends VNode>(vNode: T):T {
     return vNode
 }
 
-export function isVNode<T extends VNode = VNode>(vNode: any): vNode is VNode {
+export function isVNode<T extends VNode = VNode>(vNode: any): vNode is T {
     return typeof vNode === 'object' && vNode !== null && Object.getOwnPropertyDescriptor(vNode, SymbolVNode)?.value === true
 }
 
@@ -53,12 +54,19 @@ export interface VNodeElement extends VNodeEntity, WithKey, WithNode<HTMLElement
     ref?: Reference<any>
 }
 
-export interface VNodeInstanceRoot extends VNodeBase, WithKey {
+export interface VNodeInstanceRoot extends VNodeBase {
     type: 'INSTANCE_ROOT'
     instance: Component
     previousVNodeInstanceReference?: VNodeInstanceReference
     currentVNodeInstanceReference?: VNodeInstanceReference
     elVNode: VNodeElement
+}
+
+export interface VNodeConstructor extends VNodeBase, WithKey {
+    type: 'CONSTRUCTOR'
+    constructor: ComponentConstructor
+    instance?: Component
+    properties:Record<string,any>
 }
 
 export interface VNodeInstanceReference extends VNodeBase {
@@ -72,7 +80,7 @@ export interface VNodeText extends VNodeBase, WithNode<Text> {
     text: string
 }
 
-export type VNode = VNodeElement | VNodeInstanceRoot | VNodeInstanceReference | VNodeText
+export type VNode = VNodeElement | VNodeInstanceRoot | VNodeInstanceReference | VNodeText|VNodeConstructor
 
 
 

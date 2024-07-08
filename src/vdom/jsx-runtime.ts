@@ -1,7 +1,7 @@
 import { flatten } from 'lodash-es'
 import Logger from '../logger'
-import { VNode, VNodeElement, VNodeInstanceReference, VNodeText, makeVNode, isVNode } from './vnode'
-import { Component } from '../component/component'
+import { VNode, VNodeElement, VNodeInstanceReference, VNodeText, makeVNode, isVNode, VNodeConstructor } from './vnode'
+import { Component, ComponentConstructor } from '../component/component'
 import { VoidElementTags } from './def'
 type ChildT = VNodeElement | Component | string | number | boolean | Object | Array<any> | undefined | null
 export type Child = ChildT | Array<ChildT>
@@ -75,10 +75,24 @@ const parseChild = function (child: ChildT): VNode {
     throw ''
 }
 
-export function jsx(tag: string, props: {
+export function jsx(tag: string | ComponentConstructor, props: {
     [index: string]: any
     children?: Child
-}, key?: any): VNodeElement {
+}, key?: any): VNodeElement | VNodeConstructor {
+    if (typeof tag === 'function' && tag.prototype instanceof Component) {
+        const properties = {...props,key}
+        delete properties.children
+        const VNode: VNodeConstructor = makeVNode({
+            type: 'CONSTRUCTOR',
+            constructor: tag,
+            key: key,
+            properties
+        })
+        return VNode
+    }
+    if (typeof tag !== 'string') {
+        throw ''
+    }
     tag = tag.toLowerCase()
     const VNode: VNodeElement = makeVNode({
         type: 'ELEMENT',
