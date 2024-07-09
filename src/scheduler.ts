@@ -6,14 +6,13 @@ const LayerName_NextTick = 'LayerName_NextTick'
 const LayerName_WaitMounted = 'LayerName_WaitMounted'
 const LayerName_LowPriority = 'LayerName_LowPriority'
 import type { Component } from './component/component'
-import type { Faple } from './faple'
 export class Scheduler extends SchedulerBase {
 
     renderComponents: Set<Component> = new Set
-    faple: Faple
-    constructor(faple: Faple) {
+
+    constructor() {
         super()
-        this.faple = faple
+
         // this.createLayer(LayerName_BeforeMount)
         this.createLayer(LayerName_Mounted)
         this.createLayer(LayerName_Render)

@@ -1,6 +1,6 @@
 import { v4 as uuidV4 } from 'uuid'
 import { VNodeInstanceRoot, VNodeElement, makeVNode } from '../vdom/vnode'
-import type { Faple } from '../faple'
+import type { FapleImpl } from '../fapleImpl/fapleImpl'
 import Logger from '../logger'
 import * as Observer from '@vue/reactivity'
 import recursiveFree from 'recursive-free'
@@ -39,9 +39,9 @@ const watchDeepTraverse = recursiveFree<{ value: any, seen?: Set<any> }, any>(fu
 })
 
 class Slot {
-    constructor(ins: Component, faple: Faple) {
+    constructor(ins: Component, fapleImpl: FapleImpl) {
         this.instance = ins
-        this.faple = faple
+        this.fapleImpl = fapleImpl
         this.hEffect = Observer.effect(() => {
             this.h()
         }, {
@@ -56,7 +56,7 @@ class Slot {
     vNode?: VNodeInstanceRoot
     vNodeEl?: VNodeElement
     vNodeElOld?: VNodeElement
-    faple: Faple
+    fapleImpl: FapleImpl
     instance: Component
     hEffect: Observer.ReactiveEffectRunner
     watchEffects?: Observer.ReactiveEffectRunner[]
@@ -84,14 +84,14 @@ class Slot {
         this.vNodeEl = vNodeElement
     }
     renderSync() {
-        this.faple.updateComponent(this.instance)
+        this.fapleImpl.updateComponent(this.instance)
     }
     scheduleRender(cb?: (opt: boolean) => void) {
         if (this.instance.$preventScheduleRender) {
             cb?.(false)
             return false
         }
-        this.faple!.scheduler.scheduleRender(() => {
+        this.fapleImpl.scheduler.scheduleRender(() => {
             this.renderSync()
             cb?.(true)
         }, this.instance)
@@ -198,9 +198,9 @@ export abstract class Component<Props extends Record<string, any> = Record<strin
         }
         return slot
     }
-    constructor(faple: Faple) {
+    constructor(fapleImpl: FapleImpl) {
         Meta.create(this, {
-            slot: new Slot(this, faple)
+            slot: new Slot(this, fapleImpl)
         })
     }
 
@@ -216,13 +216,13 @@ export abstract class Component<Props extends Record<string, any> = Record<strin
         this.$$slot.renderSync()
     }
     $nextTick(cb: Function, uniqueId?: string) {
-        this.$$slot.faple.scheduler.scheduleNextTick(cb)
+        this.$$slot.fapleImpl.scheduler.scheduleNextTick(cb)
     }
     $nextTickLowPriority(cb: Function, uniqueId?: string) {
-        this.$$slot.faple.scheduler.scheduleLowPriority(cb)
+        this.$$slot.fapleImpl.scheduler.scheduleLowPriority(cb)
     }
     $release() {
-        this.$$slot.faple.releaseComponent(this)
+        this.$$slot.fapleImpl.releaseComponent(this)
     }
     $reactive<T extends object>(obj: T) {
         return Observer.reactive(obj)
