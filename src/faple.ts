@@ -5,7 +5,9 @@ import { FapleImpl } from './fapleImpl/fapleImpl'
 
 export class Faple {
     #fapleImpl: FapleImpl
-
+    get fapleImpl(){
+        return this.#fapleImpl
+    }
     constructor(scopeEl?: HTMLElement) {
         this.#fapleImpl = new FapleImpl(scopeEl)
 
