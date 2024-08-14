@@ -1,7 +1,7 @@
 import recursiveFree from "recursive-free"
-import Logger from "../../logger"
-import type { FapleImpl } from "../fapleImpl"
-import type { VNodeInstanceRoot, VNode } from "../../vdom/vnode"
+import Logger from "../../logger.mjs"
+import type { FapleImpl } from "../fapleImpl.mjs"
+import type { VNodeInstanceRoot, VNode } from "../../vdom/vnode.mjs"
 export function releaseVNodeInstanveRoot(vNode: VNodeInstanceRoot, deleteElement: boolean, fapleImpl: FapleImpl) {
     const rec = recursiveFree<VNode, void>(function* (vNode) {
         if (vNode.type === 'CONSTRUCTOR') {

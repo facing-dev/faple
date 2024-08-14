@@ -1,8 +1,8 @@
 {
     "extends": "./tsconfig.json",
     "compilerOptions": {
-        "module": "ES6",
-        "moduleResolution": "Bundler",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
         "outDir": "../dist/esm"
     }
 }

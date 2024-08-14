@@ -1,6 +1,6 @@
 // import { initRuntimeHelper, Decorator,getDecorator } from './helper'
-import type { Component } from '../component/component'
-import { initPrototypeSlot } from './propertySlot'
+import type { Component } from '../component/component.mjs'
+import { initPrototypeSlot } from './propertySlot.mjs'
 export function Reactive(comp: Component, propertyKey: string) {
     const slot = initPrototypeSlot(comp)
     slot.reactiveKeys ??= new Set

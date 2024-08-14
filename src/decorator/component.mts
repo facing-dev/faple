@@ -1,5 +1,5 @@
-import { initPrototypeSlot } from './propertySlot'
-import { VNodeElement } from '../vdom/vnode'
+import { initPrototypeSlot } from './propertySlot.mjs'
+import { VNodeElement } from '../vdom/vnode.mjs'
 export function Comp(opt: {
         render: () => VNodeElement
 }) {

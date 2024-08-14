@@ -1,9 +1,9 @@
 import recursiveFree from "recursive-free";
-import { VNode, VNodeElement } from "../../vdom/vnode";
-import { FapleImpl } from "./../fapleImpl";
-import { couldReuse } from "./couldReuse";
-import { initializeVNode } from "./initialize";
-import { releaseVNode, releaseVNodeInstanveRoot } from "./release";
+import { VNode, VNodeElement } from "../../vdom/vnode.mjs";
+import { FapleImpl } from "./../fapleImpl.mjs";
+import { couldReuse } from "./couldReuse.mjs";
+import { initializeVNode } from "./initialize.mjs";
+import { releaseVNode, releaseVNodeInstanveRoot } from "./release.mjs";
 export function updateVNode(oldVNode: VNode, newVNode: VNode, fapleImpl: FapleImpl) {
     const rec = recursiveFree<[VNode, VNode], void>(function* (args) {
         const [oldVNode, newVNode] = args

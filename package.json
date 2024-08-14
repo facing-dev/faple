@@ -3,21 +3,21 @@
   "version": "1.0.1",
   "description": "",
   "type": "module",
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
-  "exports":{
-    ".":{
-      "import":"./dist/esm/index.js",
-      "require":"./dist/cjs/index.js",
-      "types":"./dist/esm/index.d.ts"
+  "main": "dist/cjs/index.mjs",
+  "module": "dist/esm/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.mjs",
+      "require": "./dist/cjs/index.mjs",
+      "types": "./dist/esm/index.d.mts"
     },
-    "./jsx-runtime":{
-      "import":"./dist/esm/vdom/jsx-runtime.js",
-      "require":"./dist/cjs/vdom/jsx-runtime.js",
-      "types":"./dist/esm/vdom/jsx-runtime.d.ts"
+    "./jsx-runtime": {
+      "import": "./dist/esm/vdom/jsx-runtime.mjs",
+      "require": "./dist/cjs/vdom/jsx-runtime.mjs",
+      "types": "./dist/esm/vdom/jsx-runtime.d.mts"
     }
   },
-  "types":"./dist/esm/index.d.ts",
+  "types": "./dist/esm/index.d.ts",
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm",
     "watch": "npm run watch:esm",
@@ -39,7 +39,7 @@
     "@vue/reactivity": "^3.2.47",
     "facing-metadata": "^2.0.0",
     "lodash-es": "^4.17.21",
-    "recursive-free": "^1.0.3",
+    "recursive-free": "^1.0.6",
     "uuid": "^9.0.0"
   }
 }

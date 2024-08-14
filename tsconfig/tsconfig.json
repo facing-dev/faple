@@ -22,7 +22,7 @@
         "noEmit": false
     },
     "files": [
-        "../src/index.ts",
-        "../src/vdom/jsx-runtime.ts"
+        "../src/index.mts",
+        "../src/vdom/jsx-runtime.mts"
     ]
 }

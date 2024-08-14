@@ -1,5 +1,5 @@
-import type { Component } from '../component/component'
-import type { ComponentConstructor } from '../component/component'
+import type { Component } from '../component/component.mjs'
+import type { ComponentConstructor } from '../component/component.mjs'
 type VNodeType = 'ELEMENT' | 'TEXT' | 'INSTANCE_ROOT' | 'INSTANCE_REFERENCE' | 'CONSTRUCTOR'
 export interface Reference<T> {
     value: T | null

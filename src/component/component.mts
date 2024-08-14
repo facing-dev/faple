@@ -1,11 +1,11 @@
 import { v4 as uuidV4 } from 'uuid'
-import { VNodeInstanceRoot, VNodeElement, makeVNode } from '../vdom/vnode'
-import type { FapleImpl } from '../fapleImpl/fapleImpl'
-import Logger from '../logger'
+import { VNodeInstanceRoot, VNodeElement, makeVNode } from '../vdom/vnode.mjs'
+import type { FapleImpl } from '../fapleImpl/fapleImpl.mjs'
+import Logger from '../logger.mjs'
 import * as Observer from '@vue/reactivity'
 import recursiveFree from 'recursive-free'
 import { Metadata } from 'facing-metadata'
-import { PrototypeMeta } from '../decorator/propertySlot'
+import { PrototypeMeta } from '../decorator/propertySlot.mjs'
 const Meta = new Metadata<{
     slot: Slot
 }>(Symbol('faple-component'))

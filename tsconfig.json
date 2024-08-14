@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
-    "moduleResolution": "Bundler"
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
   "extends": [
     "./tsconfig/tsconfig.json"

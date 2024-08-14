@@ -1,5 +1,5 @@
-import type { Component } from '../component/component'
-import type { VNodeElement } from '../vdom/vnode'
+import type { Component } from '../component/component.mjs'
+import type { VNodeElement } from '../vdom/vnode.mjs'
 import { Metadata } from 'facing-metadata'
 export class PrototypeSlot {
     renderer?: () => VNodeElement

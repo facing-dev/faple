@@ -1,12 +1,12 @@
-import { Component, type ComponentConstructor } from "../component/component"
+import { Component, type ComponentConstructor } from "../component/component.mjs"
 import recursiveFree from 'recursive-free'
-import type { VNode, VNodeInstanceRoot } from '../vdom/vnode'
-import { Scheduler } from '../scheduler'
-import { VoidElementTags } from '../vdom/def'
-import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC_HTML } from '../constant'
-import { initializeVNode } from './vnodeManipulations/initialize'
-import { updateVNode } from './vnodeManipulations/update'
-import { releaseVNodeInstanveRoot } from "./vnodeManipulations/release"
+import type { VNode, VNodeInstanceRoot } from '../vdom/vnode.mjs'
+import { Scheduler } from '../scheduler.mjs'
+import { VoidElementTags } from '../vdom/def.mjs'
+import { KEY_ATTRIBUTE_HYDRATE_IGNORE, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC, KEY_ATTRIBUTE_HYDRATE_IGNORE_STATIC_HTML } from '../constant.mjs'
+import { initializeVNode } from './vnodeManipulations/initialize.mjs'
+import { updateVNode } from './vnodeManipulations/update.mjs'
+import { releaseVNodeInstanveRoot } from "./vnodeManipulations/release.mjs"
 export class FapleImpl {
     components: Map<string, Component> = new Map
     elementIDs: WeakMap<HTMLElement, string> = new WeakMap

@@ -1,6 +1,6 @@
-import type { VNodeInstanceRoot } from './vdom/vnode'
-import { Component, type ComponentConstructor } from './component/component'
-import { FapleImpl } from './fapleImpl/fapleImpl'
+import type { VNodeInstanceRoot } from './vdom/vnode.mjs'
+import { Component, type ComponentConstructor } from './component/component.mjs'
+import { FapleImpl } from './fapleImpl/fapleImpl.mjs'
 
 
 export class Faple {

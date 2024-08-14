@@ -1,8 +1,8 @@
 import { flatten } from 'lodash-es'
-import Logger from '../logger'
-import { VNode, VNodeElement, VNodeInstanceReference, VNodeText, makeVNode, isVNode, VNodeConstructor } from './vnode'
-import { Component, ComponentConstructor } from '../component/component'
-import { VoidElementTags } from './def'
+import Logger from '../logger.mjs'
+import { VNode, VNodeElement, VNodeInstanceReference, VNodeText, makeVNode, isVNode, VNodeConstructor } from './vnode.mjs'
+import { Component, ComponentConstructor } from '../component/component.mjs'
+import { VoidElementTags } from './def.mjs'
 type ChildT = VNodeElement | Component | string | number | boolean | Object | Array<any> | undefined | null
 export type Child = ChildT | Array<ChildT>
 const parseChild = function (child: ChildT): VNode {

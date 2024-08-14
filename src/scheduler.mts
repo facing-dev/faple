@@ -5,7 +5,7 @@ const LayerName_Render = 'LayerName_Render'
 const LayerName_NextTick = 'LayerName_NextTick'
 const LayerName_WaitMounted = 'LayerName_WaitMounted'
 const LayerName_LowPriority = 'LayerName_LowPriority'
-import type { Component } from './component/component'
+import type { Component } from './component/component.mjs'
 export class Scheduler extends SchedulerBase {
 
     renderComponents: Set<Component> = new Set

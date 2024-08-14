@@ -1,9 +1,9 @@
 import recursiveFree from 'recursive-free'
-import Logger from '../../logger'
-import type { VNode } from '../../vdom/vnode'
-import * as Hydrate from '../../vdom/hydrate'
-import type { FapleImpl } from './../fapleImpl'
-import { KEY_ATTRIBUTE_HYDRATE_IGNORE } from '../../constant'
+import Logger from '../../logger.mjs'
+import type { VNode } from '../../vdom/vnode.mjs'
+import * as Hydrate from '../../vdom/hydrate.mjs'
+import type { FapleImpl } from './../fapleImpl.mjs'
+import { KEY_ATTRIBUTE_HYDRATE_IGNORE } from '../../constant.mjs'
 export function initializeVNode( vnode: VNode, hydrate: Node | false, fapleImpl: FapleImpl) {
     const rec = recursiveFree<{ vnode: VNode, hydrate: Node | false }, HTMLElement | Text>(function* (opt) {
 

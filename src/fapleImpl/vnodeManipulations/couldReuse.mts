@@ -1,5 +1,5 @@
-import Logger from '../../logger'
-import type { VNode } from "../../vdom/vnode"
+import Logger from '../../logger.mjs'
+import type { VNode } from "../../vdom/vnode.mjs"
 export function couldReuse(oldVNode: VNode, newVNode: VNode) {
 
     if (oldVNode.type !== newVNode.type) {
