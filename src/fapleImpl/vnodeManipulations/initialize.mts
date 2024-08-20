@@ -161,7 +161,7 @@ export function initializeVNode( vnode: VNode, hydrate: Node | false, fapleImpl:
             }
             if (vnode.type === 'INSTANCE_ROOT') {
                 // registerElementId(vnodeElement.node,vnode.instance.)
-                // elementIDs.set(vnodeElement.node, vnode.instance.$$slot.id)
+                fapleImpl.elementIDs.set(vnodeElement.node, vnode.instance.$$slot.id)
             }
 
             return el
