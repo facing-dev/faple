@@ -35,40 +35,40 @@ const parseChild = function (child: ChildT): VNode {
     }
 
     if (typeof child === 'string') {
-        return {
+        return makeVNode({
             type: 'TEXT',
             text: child
-        }
+        })
     }
     if (child === true) {
-        return {
+        return makeVNode({
             type: 'TEXT',
             text: ''
-        }
+        })
     }
     if (child === false) {
-        return {
+        return makeVNode({
             type: 'TEXT',
             text: ''
-        }
+        })
     }
     if (typeof child === 'number') {
-        return {
+        return makeVNode({
             type: 'TEXT',
             text: String(child)
-        }
+        })
     }
     if (typeof child === 'undefined') {
-        return {
+        return makeVNode({
             type: 'TEXT',
             text: ''
-        }
+        })
     }
     if (child === null) {
-        return {
+        return makeVNode({
             type: 'TEXT',
-            text: 'null'
-        }
+            text: ''
+        })
     }
 
     Logger.error('Can not parse child', child)
@@ -80,7 +80,7 @@ export function jsx(tag: string | ComponentConstructor, props: {
     children?: Child
 }, key?: any): VNodeElement | VNodeConstructor {
     if (typeof tag === 'function' && tag.prototype instanceof Component) {
-        const properties = {...props,key}
+        const properties = { ...props, key }
         delete properties.children
         const VNode: VNodeConstructor = makeVNode({
             type: 'CONSTRUCTOR',
