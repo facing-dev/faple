@@ -108,6 +108,7 @@ export function updateVNode(oldVNode: VNode, newVNode: VNode, fapleImpl: FapleIm
             {
                 //children
                 let newInd = -1
+
                 if (oldVNodeElement.children) {
                     for (const oldInd in oldVNodeElement.children) {
                         const oldChild = oldVNodeElement.children[oldInd]
@@ -128,10 +129,20 @@ export function updateVNode(oldVNode: VNode, newVNode: VNode, fapleImpl: FapleIm
                                 releaseVNodeInstanveRoot(oldChild.instance!.$$slot.vNode!, false, fapleImpl)
                             }
                             const newNode = initializeVNode(newChild, false, fapleImpl)
+
+                            /** 
+                             * `initializeVNode` may set `oldChild`'s ``isFake` true, skip the old child and iterate new child again
+                             */
+                            if (oldChild.type === 'INSTANCE_REFERENCE' && oldChild.isFake === true) {
+                                newInd -= 1
+                                continue
+                            }
+                            
                             node.replaceChild(newNode,
                                 oldChild.type === 'INSTANCE_REFERENCE' ? oldChild.vNodeInstanceRoot.elVNode.node! :
                                     (oldChild.type === 'INSTANCE_ROOT' ? oldChild.elVNode.node! :
                                         oldChild.type === 'CONSTRUCTOR' ? oldChild.instance!.$$slot.vNodeEl!.node! : oldChild.node!))
+
 
                         }
                     }
