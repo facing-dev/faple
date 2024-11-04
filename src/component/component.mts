@@ -121,13 +121,16 @@ class Slot {
                 insAny[key] = insAny[key].bind(ins)
             }
         }
-        const reactiveKeys = ins.$$prototypeSlot.reactiveKeys
-        if (reactiveKeys && reactiveKeys.size > 0) {
-            for (const key of reactiveKeys.values()) {
-                const proxied = Observer.reactive((insAny[key]));
-                insAny[key] = proxied
+        ins.$$prototypeSlots.forEach(slot => {
+            const reactiveKeys = slot.reactiveKeys
+            if (reactiveKeys && reactiveKeys.size > 0) {
+                for (const key of reactiveKeys.values()) {
+                    const proxied = Observer.reactive((insAny[key]));
+                    insAny[key] = proxied
+                }
             }
-        }
+        })
+
         // const watchKeys = ins.$$prototypeSlot.watchKeys
         // if (watchKeys && watchKeys.size > 0) {
         //     for (const key of watchKeys.values()) {
@@ -197,6 +200,13 @@ export abstract class Component<Props extends Record<string, any> = Record<strin
             throw 'no prototype slot'
         }
         return slot
+    }
+    get $$prototypeSlots() {
+        const slots = PrototypeMeta.getAll(this)?.map(ite => ite.slot)
+        if (!slots) {
+            throw 'no prototype slot'
+        }
+        return slots
     }
     constructor(fapleImpl: FapleImpl) {
         Meta.create(this, {
